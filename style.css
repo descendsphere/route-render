@@ -1,0 +1,227 @@
+html, body, #cesiumContainer {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+#panel-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+}
+
+#side-panel {
+  background: rgba(38, 38, 38, 0.85);
+  backdrop-filter: blur(5px);
+  padding: 10px; /* Adjusted padding */
+  border-radius: 8px;
+  color: white;
+  max-height: 95vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  width: 320px;
+  transition: transform 0.3s ease-in-out;
+}
+
+#side-panel.collapsed {
+  transform: translateX(-330px);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0; /* Adjusted padding */
+  cursor: pointer;
+  border-bottom: 1px solid #444;
+  width: 85%; /* New width */
+  margin: 0 auto; /* Center horizontally */
+}
+
+.panel-content {
+  padding: 15px 0; /* Adjusted padding */
+  width: 85%; /* New width */
+  margin: 0 auto; /* Center horizontally */
+}
+
+#side-panel.collapsed .panel-content {
+  display: none;
+}
+
+#panel-toggle {
+  width: 24px;
+  height: 24px;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+}
+
+h1, h2, h3, h4, h5 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+h1 { font-size: 1.4em; }
+h4 { font-size: 1.1em; color: #ccc; }
+h5 { font-size: 0.9em; text-transform: uppercase; color: #999; margin-top: 15px; }
+
+.control-group {
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #444;
+}
+
+.control-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+/* General input styling */
+input[type="file"], input[type="number"], select {
+  width: 100%; /* These should take full width */
+  margin-bottom: 10px;
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #222;
+  color: white;
+}
+
+/* Specific styling for range inputs (sliders) */
+.slider-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.slider-group label {
+  flex-shrink: 0;
+  margin-right: 10px;
+  margin-bottom: 0;
+  width: 60px; /* Fixed width for label */
+}
+
+.slider-group input[type="range"] {
+  flex-grow: 1;
+  margin-bottom: 0;
+}
+
+.slider-group span {
+  flex-shrink: 0;
+  margin-left: 10px;
+  width: 40px; /* Fixed width for display */
+  text-align: right;
+}
+
+/* Specific styling for number inputs */
+.number-input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.number-input-group label {
+  flex-shrink: 0;
+  margin-right: 10px;
+  margin-bottom: 0;
+  width: 60px; /* Fixed width for label */
+}
+
+.number-input-group input[type="number"] {
+  width: 80px; /* Smaller fixed width */
+  margin-bottom: 0;
+}
+
+/* Specific styling for color picker */
+.color-input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.color-input-group label {
+  flex-shrink: 0;
+  margin-right: 10px;
+  margin-bottom: 0;
+  width: 60px; /* Fixed width for label */
+}
+
+input[type="color"] {
+  width: 40px;
+  height: 40px;
+  padding: 2px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #222;
+  vertical-align: middle;
+  margin-bottom: 0;
+}
+
+/* Button styling */
+.tour-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tour-buttons button {
+  flex-grow: 1;
+  padding: 10px 12px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.tour-buttons button:hover {
+  background-color: #45a049;
+}
+
+#loading-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #fff;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

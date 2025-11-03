@@ -4,6 +4,7 @@ import StatisticsCalculator from './modules/StatisticsCalculator.js';
 import PoiService from './modules/PoiService.js';
 import ReverseGeocodingService from './modules/ReverseGeocodingService.js';
 import Person from './modules/Person.js';
+import UIManager from './modules/UIManager.js'; // New import
 
 class App {
   constructor() {
@@ -13,6 +14,7 @@ class App {
     this.currentPoints = [];
     this.routeEntity = null;
     this.person = null;
+    this.ui = null; // New UIManager instance
   }
 
   /**
@@ -29,7 +31,38 @@ class App {
     this.person = new Person(this.viewer);
     this.person.create();
     this.tourController = new TourController(this.viewer, this.person);
-    this.initUI();
+    this.ui = new UIManager(this.viewer); // Initialize UIManager
+
+    // Set up UI callbacks
+    this.ui.onFileSelected = (file) => this.handleFileSelect(file);
+    this.ui.onPlayTour = () => this.handlePlayTour();
+    this.ui.onStopTour = () => this.tourController.stopTour();
+    this.ui.onZoomToRoute = () => this.zoomToRoute();
+    this.ui.onResetStyle = () => this.handleResetStyle(); // New callback
+    this.ui.onSetSpeed = (relativeSpeed) => this.tourController.setSpeed(relativeSpeed);
+    this.ui.onUpdateRouteColor = () => this.updateRouteStyle();
+    this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
+    this.ui.onSetCameraStrategy = (strategy) => this.tourController.setCameraStrategy(strategy);
+    this.ui.onUpdatePersonStyle = (style) => this.person.updateStyle(style);
+    this.ui.onToggleClampToGround = () => {
+      if (this.currentPoints.length > 0) {
+        this.updateRouteStyle();
+        this.tourController.updateVisuals();
+      }
+    };
+
+    this.ui.init(); // Initialize UI event listeners
+
+    // Add a listener to update the person label with the current time
+    this.viewer.scene.postRender.addEventListener(() => {
+      if (this.tourController.tour && this.viewer.clock.shouldAnimate) {
+        const currentTime = this.viewer.clock.currentTime;
+        const timeString = Cesium.JulianDate.toIso8601(currentTime, 2).replace('T', ' ').replace('Z', '');
+        if (this.person.entity && this.person.entity.label) {
+          this.person.entity.label.text = timeString;
+        }
+      }
+    });
   }
 
   /**
@@ -59,76 +92,12 @@ class App {
   }
 
   /**
-   * Initializes the user interface and event listeners.
+   * Handles the play tour action from the UI.
    */
-  initUI() {
-    logger.info('Initializing UI.');
-    const gpxFileInput = document.getElementById('gpx-file');
-    gpxFileInput.addEventListener('change', (event) => this.handleFileSelect(event));
-
-    const playButton = document.getElementById('play-tour');
-    playButton.addEventListener('click', () => this.startTour());
-
-    const pauseButton = document.getElementById('pause-tour');
-    pauseButton.addEventListener('click', () => this.tourController.stopTour());
-
-    const stopButton = document.getElementById('stop-tour');
-    stopButton.addEventListener('click', () => this.tourController.stopTour());
-
-    const speedSlider = document.getElementById('tour-speed');
-    speedSlider.addEventListener('input', (event) => this.tourController.setSpeed(event.target.value));
-
-    const zoomToRouteButton = document.getElementById('zoom-to-route');
-    zoomToRouteButton.addEventListener('click', () => this.zoomToRoute());
-
-    const cameraHeadingInput = document.getElementById('camera-heading');
-    cameraHeadingInput.addEventListener('input', (event) => this.tourController.setHeading(parseFloat(event.target.value)));
-
-    const cameraPitchInput = document.getElementById('camera-pitch');
-    cameraPitchInput.addEventListener('input', (event) => this.tourController.setPitch(parseFloat(event.target.value)));
-
-    const cameraRollInput = document.getElementById('camera-roll');
-    cameraRollInput.addEventListener('input', (event) => this.tourController.setRoll(parseFloat(event.target.value)));
-
-    const cameraHeightInput = document.getElementById('camera-height');
-    cameraHeightInput.addEventListener('input', (event) => this.tourController.setHeight(parseFloat(event.target.value)));
-
-    const routeColorInput = document.getElementById('route-color');
-    routeColorInput.addEventListener('input', (event) => this.updateRouteColor(event.target.value));
-
-    const routeWidthInput = document.getElementById('route-width');
-    routeWidthInput.addEventListener('input', (event) => this.updateRouteWidth(event.target.value));
-
-    const cameraStrategyInput = document.getElementById('camera-strategy');
-    cameraStrategyInput.addEventListener('change', (event) => this.tourController.setCameraStrategy(event.target.value));
-  }
-
-  /**
-   * Updates the color of the route polyline.
-   * @param {string} color - The new color in hex format.
-   */
-  updateRouteColor(color) {
-    if (this.routeEntity) {
-      this.routeEntity.polyline.material = Cesium.Color.fromCssColorString(color);
-    }
-  }
-
-  /**
-   * Updates the width of the route polyline.
-   * @param {number} width - The new width in pixels.
-   */
-  updateRouteWidth(width) {
-    if (this.routeEntity) {
-      this.routeEntity.polyline.width = parseInt(width, 10);
-    }
-  }
-
-  /**
-   * Starts the cinematic tour.
-   */
-  startTour() {
+  handlePlayTour() {
     if (this.currentPoints.length > 0) {
       this.tourController.startTour(this.currentPoints, this.routeCenter, this.maxRouteElevation);
+      this.viewer.clock.shouldAnimate = true;
     } else {
       logger.warn('No route points available to start the tour.');
     }
@@ -136,10 +105,11 @@ class App {
 
   /**
    * Handles the selection of a GPX file.
-   * @param {Event} event - The file input change event.
+   * @param {File} file - The selected GPX file.
    */
-  handleFileSelect(event) {
-    const file = event.target.files[0];
+  handleFileSelect(file) {
+    this.clearRoute(); // Clear previous route before loading a new one
+
     if (!file) {
       logger.warn('No file selected.');
       return;
@@ -147,22 +117,35 @@ class App {
 
     logger.info(`Selected file: ${file.name}`);
     this.gpxFile = file;
-    this.showLoadingIndicator();
+    this.ui.showLoadingIndicator();
     this.parseAndRenderGpx();
   }
 
   /**
-   * Shows the loading indicator.
+   * Clears the currently loaded route and all associated data.
    */
-  showLoadingIndicator() {
-    document.getElementById('loading-indicator').style.display = 'block';
-  }
+  clearRoute() {
+    logger.info('Clearing current route.');
+    this.tourController.stopTour();
 
-  /**
-   * Hides the loading indicator.
-   */
-  hideLoadingIndicator() {
-    document.getElementById('loading-indicator').style.display = 'none';
+    if (this.routeEntity) {
+      this.viewer.entities.remove(this.routeEntity);
+      this.routeEntity = null;
+    }
+
+    // Remove all entities that have our custom gpxEntity flag
+    const entitiesToRemove = this.viewer.entities.values.filter(entity => entity.gpxEntity);
+    entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
+
+    this.currentPoints = [];
+
+    // Hide UI elements
+    this.ui.hideTourControls();
+    this.ui.hideRouteStats();
+    this.ui.hideStyleControls();
+    this.ui.hideCameraStrategyControls();
+    this.ui.hideFilenameSuggestion();
+    this.ui.hideCameraInfo();
   }
 
   /**
@@ -172,7 +155,7 @@ class App {
     const reader = new FileReader();
     reader.onload = (e) => {
       const gpxData = e.target.result;
-      const gpx = new gpxParser();//GPXParser(gpxData);
+      const gpx = new gpxParser();
       gpx.parse(gpxData);
 
       if (!gpx.tracks.length) {
@@ -182,12 +165,12 @@ class App {
       }
 
       this.renderGpx(gpx);
-      this.hideLoadingIndicator();
+      this.ui.hideLoadingIndicator();
     };
     reader.onerror = (e) => {
         logger.error('Error reading file:', e);
         alert('Error reading file.');
-        this.hideLoadingIndicator();
+        this.ui.hideLoadingIndicator();
     }
     reader.readAsText(this.gpxFile);
   }
@@ -198,23 +181,29 @@ class App {
    */
   renderGpx(gpx) {
     const track = gpx.tracks[0];
-    const points = track.points.map(p => ({ lon: p.lon, lat: p.lat, ele: p.ele }));
+    const points = track.points.map(p => ({ lon: p.lon, lat: p.lat, ele: p.ele, time: p.time }));
 
     // Render waypoints
     if (gpx.waypoints && gpx.waypoints.length > 0) {
       logger.info(`Found ${gpx.waypoints.length} waypoints.`);
       gpx.waypoints.forEach(wpt => {
         this.viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(wpt.lon, wpt.lat, wpt.ele + 50 || 0),
+          //position: Cesium.Cartesian3.fromDegrees(wpt.lon, wpt.lat, wpt.ele + 50 || 0),
+          position: Cesium.Cartesian3.fromDegrees(wpt.lon, wpt.lat, 300),
           description: wpt.name,
+          gpxEntity: true, // Flag for cleanup
           billboard: {
             image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
             verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            clampToGround: true,
           },
           label: {
             text: wpt.name,
             font: '14pt sans-serif',
-            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, -50),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
           },
         });
       });
@@ -239,25 +228,12 @@ class App {
    */
   renderRoute(points) {
     this.currentPoints = points;
-    const positions = Cesium.Cartesian3.fromDegreesArrayHeights(
-      points.flatMap(p => [p.lon, p.lat, p.ele])
-    );
+    this.updateRouteStyle(); // Draw the route polyline
 
-    this.routeEntity = this.viewer.entities.add({
-      polyline: {
-        positions: positions,
-        width: 5,
-        material: Cesium.Color.RED,
-        depthFailMaterial: new Cesium.PolylineOutlineMaterialProperty({
-          color: Cesium.Color.RED,
-          outlineWidth: 2,
-          outlineColor: Cesium.Color.RED,
-        }),
-        clampToGround: false, // Set to false to use the provided heights
-      },
-    });
+    // --- One-time operations after initial rendering ---
 
-    const boundingSphere = new Cesium.BoundingSphere.fromPoints(positions);
+    const positions = this.routeEntity.polyline.positions.getValue();
+    const boundingSphere = Cesium.BoundingSphere.fromPoints(positions);
     this.routeCenter = boundingSphere.center;
     logger.info('routeCenter:' + this.routeCenter);
 
@@ -272,24 +248,18 @@ class App {
     logger.info('Route rendered successfully.');
 
     // Show the tour controls
-    const tourControls = document.getElementById('tour-controls');
-    tourControls.style.display = 'block';
+    this.ui.showTourControls();
 
     // Calculate and display statistics
     const stats = StatisticsCalculator.calculate(points);
-    const statsContent = document.getElementById('stats-content');
-    statsContent.innerHTML = `
-      <p>Distance: ${stats.distance} km</p>
-      <p>Elevation Gain: ${stats.elevationGain} m</p>
-    `;
-    const routeStats = document.getElementById('route-stats');
-    routeStats.style.display = 'block';
+    this.ui.updateStatsContent(stats);
+    this.ui.showRouteStats();
 
-    const styleControls = document.getElementById('style-controls');
-    styleControls.style.display = 'block';
+    // Show style controls
+    this.ui.showStyleControls();
 
-    const cameraStrategyControls = document.getElementById('camera-strategy-controls');
-    cameraStrategyControls.style.display = 'block';
+    // Show camera strategy controls
+    this.ui.showCameraStrategyControls();
 
     this.fetchAndRenderPois(points);
     this.generateAndDisplayFilename(points);
@@ -317,11 +287,8 @@ class App {
 
     const filename = `${year}-${month}-${day}.${hours}${minutes}_${startLocation}_${endLocation}.gpx`;
 
-    const filenameContent = document.getElementById('filename-content');
-    filenameContent.textContent = filename;
-
-    const filenameSuggestion = document.getElementById('filename-suggestion');
-    filenameSuggestion.style.display = 'block';
+    this.ui.updateFilenameContent(filename);
+    this.ui.showFilenameSuggestion();
   }
 
   /**
@@ -332,22 +299,25 @@ class App {
     const pois = await PoiService.fetchPois(points);
     pois.forEach(poi => {
       this.viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 200),
+        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 300),
         description: poi.name,
+        gpxEntity: true, // Flag for cleanup
         billboard: {
           image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
           color: Cesium.Color.BLUE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          clampToGround: true,
         },
         label: {
           text: poi.name,
           font: '12pt sans-serif',
-          verticalOrigin: Cesium.VerticalOrigin.TOP,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -50),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
         },
       });
     });
-    this.hideLoadingIndicator();
+    this.ui.hideLoadingIndicator();
   }
 
   /**
@@ -355,28 +325,68 @@ class App {
    * @param {Array<object>} points - An array of points with lon and lat properties.
    */
   async enrichAndRenderRoute(points) {
-    this.showLoadingIndicator();
+    this.ui.showLoadingIndicator();
     const positions2D = Cesium.Cartesian3.fromDegreesArray(
         points.flatMap(p => [p.lon, p.lat])
     );
 
-    try {
-        const updatedPositions = await Cesium.sampleTerrainMostDetailed(this.viewer.terrainProvider, positions2D);
-        const enrichedPoints = updatedPositions.map((position, i) => {
-            const cartographic = Cesium.Cartographic.fromCartesian(position);
-            return {
-                lon: Cesium.Math.toDegrees(cartographic.longitude),
-                lat: Cesium.Math.toDegrees(cartographic.latitude),
-                ele: cartographic.height,
-            };
-        });
+	try {
+		const updatedPositions = await Cesium.sampleTerrainMostDetailed(this.viewer.terrainProvider, positions2D);
+		const enrichedPoints = updatedPositions.map((position, i) => {
+			const cartographic = Cesium.Cartographic.fromCartesian(position);
+			return {
+				lon: Cesium.Math.toDegrees(cartographic.longitude),
+				lat: Cesium.Math.toDegrees(cartographic.latitude),
+				ele: cartographic.height,
+			};
+		});
 
-        logger.info('Elevation data enriched successfully.');
-        this.renderRoute(enrichedPoints);
+		logger.info('Elevation data enriched successfully.');
+		this.renderGpx(enrichedPoints);
 
-    } catch (error) {
-        logger.error('Error during terrain sampling:', error);
+	} catch (error) {
+		logger.error('Error during terrain sampling:', error);
+		this.ui.hideLoadingIndicator();
+	}  }
+
+  /**
+   * Updates only the style of the route polyline (color, width, clamp).
+   */
+  updateRouteStyle() {
+    // Remove existing route entity if it exists
+    if (this.routeEntity) {
+      this.viewer.entities.remove(this.routeEntity);
     }
+
+    const clampToGround = document.getElementById('clamp-to-ground').checked;
+    const color = document.getElementById('route-color').value;
+    const width = parseInt(document.getElementById('route-width').value, 10);
+
+    const polylineOptions = {
+      width: width,
+      material: Cesium.Color.fromCssColorString(color),
+      depthFailMaterial: new Cesium.PolylineOutlineMaterialProperty({
+        color: Cesium.Color.fromCssColorString(color),
+        outlineWidth: 2,
+        outlineColor: Cesium.Color.fromCssColorString(color),
+      }),
+    };
+
+    if (clampToGround) {
+      polylineOptions.positions = Cesium.Cartesian3.fromDegreesArray(
+        this.currentPoints.flatMap(p => [p.lon, p.lat])
+      );
+      polylineOptions.clampToGround = true;
+    } else {
+      polylineOptions.positions = Cesium.Cartesian3.fromDegreesArrayHeights(
+        this.currentPoints.flatMap(p => [p.lon, p.lat, p.ele])
+      );
+      polylineOptions.clampToGround = false;
+    }
+
+    this.routeEntity = this.viewer.entities.add({
+      polyline: polylineOptions,
+    });
   }
 
   /**
@@ -387,8 +397,35 @@ class App {
       this.viewer.zoomTo(this.routeEntity);
     }
   }
+
+  /**
+   * Resets all style and camera controls to their default values.
+   */
+  handleResetStyle() {
+    logger.info('Resetting styles to default.');
+
+    // Reset UI controls to their default values
+    this.ui.routeColorInput.value = '#FFA500';
+    this.ui.routeWidthInput.value = 2;
+    this.ui.clampToGroundInput.checked = true;
+    this.ui.personColorInput.value = '#FFA500';
+    this.ui.personSizeInput.value = 1;
+    this.ui.cameraStrategyInput.value = 'overhead';
+    this.ui.speedSlider.value = 1;
+
+    // Programmatically trigger events to apply the changes
+    this.ui.routeColorInput.dispatchEvent(new Event('input'));
+    this.ui.routeWidthInput.dispatchEvent(new Event('input'));
+    this.ui.clampToGroundInput.dispatchEvent(new Event('change'));
+    this.ui.personColorInput.dispatchEvent(new Event('input'));
+    this.ui.personSizeInput.dispatchEvent(new Event('input'));
+    this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
+    this.ui.speedSlider.dispatchEvent(new Event('input'));
+  }
 }
 
-// Initialize and run the application
-const app = new App();
-app.init();
+window.addEventListener('DOMContentLoaded', () => {
+  // Initialize and run the application
+  const app = new App();
+  app.init();
+});

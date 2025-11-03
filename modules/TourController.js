@@ -1,22 +1,21 @@
 import logger from './Logger.js';
+import SpeedController from './SpeedController.js';
 
 class TourController {
   constructor(viewer, person) {
     this.viewer = viewer;
     this.person = person;
     this.tour = null;
-    this.animationRequest = null;
-    this.startTime = null;
-    this.tourSpeed = 5; // Default speed
-    this.cameraHeading = 0;
-    this.cameraPitch = -45;
-    this.cameraRoll = 0;
-    this.cameraHeight = 200;
-    this.cameraStrategy = 'top-down'; // Default strategy
-    this.fixedTopDownCameraPosition = null;
+    this.speedController = new SpeedController(this.viewer.clock); // New SpeedController instance
+    this.cameraStrategy = 'overhead'; // Default strategy
+    this.cameraListeners = {}; // To hold references to listeners
 
-    // Bind the animate method to the class instance
-    this.animate = this.animate.bind(this);
+    this.cameraStrategies = {
+      'third-person': this._activateTrackedCamera.bind(this),
+      'top-down': this._activateFixedCamera.bind(this),
+      'first-person': this._activateFirstPersonCamera.bind(this),
+      'overhead': this._activateOverheadCamera.bind(this),
+    };
   }
 
   /**
@@ -25,138 +24,232 @@ class TourController {
    */
   startTour(points, routeCenter, maxRouteElevation) {
     logger.info('startTour called');
-    this.stopTour(); // Stop any existing tour
+    this.stopTour(); // Stop any existing tour and clear camera settings
 
     this.routeCenter = routeCenter;
     this.maxRouteElevation = maxRouteElevation;
 
-    const positions = Cesium.Cartesian3.fromDegreesArrayHeights(
-      points.flatMap(p => [p.lon, p.lat, p.ele]) // Original GPX points for person
-    );
+    const hasNativeTimestamps = points.length > 0 && points[0].time;
+    if (!hasNativeTimestamps) {
+      logger.warn('No timestamps found. Synthesizing time data based on constant speed.');
+      points = this._synthesizeTimestamps(points);
+    }
 
-    const personSpline = new Cesium.CatmullRomSpline({
-      times: Array.from({ length: positions.length }, (_, i) => i),
-      points: positions,
+    const personPositionProperty = new Cesium.SampledPositionProperty();
+    let startTime = null;
+    let stopTime = null;
+
+    points.forEach(p => {
+      const julianDate = Cesium.JulianDate.fromDate(p.time);
+      const personCartesian = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
+
+      personPositionProperty.addSample(julianDate, personCartesian);
+
+      if (startTime === null || Cesium.JulianDate.lessThan(julianDate, startTime)) {
+        startTime = julianDate;
+      }
+      if (stopTime === null || Cesium.JulianDate.greaterThan(julianDate, stopTime)) {
+        stopTime = julianDate;
+      }
     });
 
-    const cameraPositions = Cesium.Cartesian3.fromDegreesArrayHeights(
-      points.flatMap(p => [p.lon, p.lat, p.ele + this.cameraHeight]) // Elevated path for camera
-    );
+    if (startTime === null || stopTime === null) {
+      logger.error('Cannot start tour: GPX file does not contain any valid timestamps.');
+      alert('Cannot start tour: GPX file does not contain any valid timestamps.');
+      return;
+    }
 
-    const cameraSpline = new Cesium.CatmullRomSpline({
-      times: Array.from({ length: cameraPositions.length }, (_, i) => i),
-      points: cameraPositions,
-    });
+    // Configure Cesium's clock
+    this.viewer.clock.startTime = startTime.clone();
+    this.viewer.clock.stopTime = stopTime.clone();
+    this.viewer.clock.currentTime = startTime.clone();
+    this.speedController.calculateAndSetDefault(startTime, stopTime, 90); // Calculate and set default speed
+    this.viewer.clock.clockRange = Cesium.ClockRange.CLAMPED; // Stops at end
+    this.viewer.clock.shouldAnimate = false; // Start paused
 
-    logger.info('Generating camera track...');
-    const cameraTrack = this.generateCameraTrack(cameraSpline, cameraPositions.length);
-    logger.info('Camera track generated.');
+    // Zoom the timeline to the GPX data's time range
+    this.viewer.timeline.zoomTo(startTime, stopTime);
+
+    // Update the Person entity
+    this.person.entity.position = personPositionProperty;
+    this.person.entity.orientation = new Cesium.VelocityOrientationProperty(personPositionProperty);
 
     this.tour = {
       points: points, // Store for regeneration
-      personSpline: personSpline,
-      cameraSpline: cameraSpline,
-      duration: cameraTrack.length * (1 / this.tourSpeed) / 10,
-      cameraTrack: cameraTrack,
+      personPositionProperty: personPositionProperty,
+      startTime: startTime,
+      stopTime: stopTime,
     };
 
     document.getElementById('camera-info').style.display = 'block';
-    this.startTime = performance.now();
-    this.animationRequest = window.requestAnimationFrame(this.animate);
+
+    this.updateVisuals(); // Set initial visual state
+    this._applyCameraStrategy();
   }
 
   /**
-   * Generates a pre-calculated camera track.
-   * @param {Cesium.CatmullRomSpline} spline - The spline for the camera path.
-   * @param {number} numPoints - The number of points in the spline.
-   * @returns {Array<object>} An array of camera states.
+   * Generates synthetic timestamps for a route based on a constant speed.
+   * @param {Array<object>} points - The array of points without time data.
+   * @returns {Array<object>} A new array of points with a `time` property added.
+   * @private
    */
-  generateCameraTrack(spline, numPoints) {
-    const cameraTrack = [];
-    const numSteps = numPoints * 10; // Increase for smoother animation
+  _synthesizeTimestamps(points) {
+    const constantSpeedMetersPerSecond = 5;
+    let syntheticTime = Cesium.JulianDate.now();
+    let lastPosition = null;
 
-    for (let i = 0; i < numSteps; i++) {
-      const time = i / (numSteps - 1) * (numPoints - 1);
-      const position = spline.evaluate(time);
-      const nextPosition = spline.evaluate(time + 0.01);
+    return points.map(p => {
+      const newPoint = { ...p };
+      const currentPosition = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
 
-      const direction = Cesium.Cartesian3.normalize(
-        Cesium.Cartesian3.subtract(nextPosition, position, new Cesium.Cartesian3()),
-        new Cesium.Cartesian3()
+      if (lastPosition) {
+        const distance = Cesium.Cartesian3.distance(lastPosition, currentPosition);
+        const timeElapsed = distance / constantSpeedMetersPerSecond;
+        Cesium.JulianDate.addSeconds(syntheticTime, timeElapsed, syntheticTime);
+      }
+
+      newPoint.time = Cesium.JulianDate.toDate(syntheticTime);
+      lastPosition = currentPosition;
+      return newPoint;
+    });
+  }
+
+  /**
+   * Updates the visual state of dynamic entities based on UI controls.
+   */
+  updateVisuals() {
+    // Get clamp to ground state from UI and apply to person
+    const clampToGround = document.getElementById('clamp-to-ground').checked;
+    if (clampToGround) {
+      this.person.entity.billboard.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
+      this.person.entity.label.heightReference = Cesium.HeightReference.CLAMP_TO_GROUND;
+    } else {
+      this.person.entity.billboard.heightReference = Cesium.HeightReference.NONE;
+      this.person.entity.label.heightReference = Cesium.HeightReference.NONE;
+    }
+  }
+
+  /**
+   * Applies the currently selected camera strategy.
+   * @private
+   */
+  _applyCameraStrategy() {
+    // Clear previous camera settings
+    this._cleanupCamera();
+
+    if (this.cameraStrategies[this.cameraStrategy]) {
+      this.cameraStrategies[this.cameraStrategy]();
+    }
+  }
+
+  /**
+   * Cleans up all camera configurations (listeners, tracked entity).
+   * @private
+   */
+  _cleanupCamera() {
+    this.viewer.trackedEntity = undefined;
+    this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+    for (const listenerName in this.cameraListeners) {
+      if (this.cameraListeners.hasOwnProperty(listenerName)) {
+        this.cameraListeners[listenerName](); // This calls the removal function
+        delete this.cameraListeners[listenerName];
+      }
+    }
+  }
+
+  /**
+   * Activates the Tracked Entity (Third-Person) camera.
+   * @private
+   */
+  _activateTrackedCamera() {
+    this._cleanupCamera();
+    this.viewer.trackedEntity = this.person.entity;
+    // Zoom to all entities to see the whole route initially
+    this.viewer.zoomTo(this.viewer.entities);
+  }
+
+  /**
+   * Activates the Fixed Position (Top-Down) camera.
+   * @private
+   */
+  _activateFixedCamera() {
+    this._cleanupCamera();
+    const cameraPosition = Cesium.Cartesian3.fromDegrees(
+      Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).longitude),
+      Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).latitude),
+      this.maxRouteElevation + 2000 // 2km above max elevation
+    );
+
+    this.viewer.camera.setView({
+      destination: cameraPosition,
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-90),
+        roll: 0
+      }
+    });
+  }
+
+  /**
+   * Activates the First-Person (POV) camera.
+   * @private
+   */
+  _activateFirstPersonCamera() {
+    this._cleanupCamera();
+    const listener = (clock) => {
+      if (!this.tour) return; // Do nothing if no tour is active
+      const currentPos = this.person.entity.position.getValue(clock.currentTime);
+      const currentOri = this.person.entity.orientation.getValue(clock.currentTime);
+      if (!Cesium.defined(currentPos) || !Cesium.defined(currentOri)) return;
+
+      const transform = Cesium.Matrix4.fromRotationTranslation(
+        Cesium.Matrix3.fromQuaternion(currentOri),
+        currentPos
       );
 
-      const heading = Math.atan2(direction.y, direction.x) - Cesium.Math.PI_OVER_TWO + Cesium.Math.toRadians(this.cameraHeading);
-      const pitch = Cesium.Math.toRadians(this.cameraPitch);
-      const roll = Cesium.Math.toRadians(this.cameraRoll);
+      // Offset for a clear over-the-shoulder view
+      const offset = new Cesium.HeadingPitchRange(
+        0, // Straight ahead
+        Cesium.Math.toRadians(-25), // Pitch down 25 degrees
+        50 // 50 meters away from the person
+      );
 
-      cameraTrack.push({
-        position: position,
-        orientation: {
-          heading: heading,
-          pitch: pitch,
-          roll: roll,
-        },
-      });
-    }
-    return cameraTrack;
+      this.viewer.camera.lookAtTransform(transform, offset);
+    };
+
+    this.viewer.clock.onTick.addEventListener(listener);
+    this.cameraListeners['first-person'] = () => this.viewer.clock.onTick.removeEventListener(listener);
   }
 
   /**
-   * The main animation loop for the tour.
-   * @param {number} timestamp - The current time from requestAnimationFrame.
+   * Activates the Overhead / Dynamic camera.
+   * @private
    */
-  animate(timestamp) {
-    if (!this.tour) return;
+  _activateOverheadCamera() {
+    this._cleanupCamera();
+    const listener = () => {
+      if (!this.tour) return; // Do nothing if no tour is active
+      const currentPos = this.person.entity.position.getValue(this.viewer.clock.currentTime);
+      if (!Cesium.defined(currentPos) || !this.tour) return;
 
-    const elapsedTime = (timestamp - this.startTime) / 1000; // in seconds
-    const time = (elapsedTime % this.tour.duration) / this.tour.duration;
-    const trackIndex = Math.floor(time * (this.tour.cameraTrack.length - 1));
+      // Calculate tour progress (0.0 to 1.0)
+      const tourDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
+      const elapsedTime = Cesium.JulianDate.secondsDifference(this.viewer.clock.currentTime, this.tour.startTime);
+      const tourProgress = Math.min(elapsedTime / tourDuration, 1.0);
 
-    logger.debug(`elapsedTime: ${elapsedTime}, time: ${time}, trackIndex: ${trackIndex}`);
+      // Calculate heading to complete one 360-degree rotation over the tour duration
+      const heading = Cesium.Math.toRadians(tourProgress * 360);
+      const pitch = Cesium.Math.toRadians(-35); // look down at ~35°
+      const range = 1000; // stay 1km away
 
-    const personPosition = this.tour.personSpline.evaluate(time * (this.tour.personSpline.points.length - 1));
-    logger.info(`personPosition: ${personPosition}`);
-    this.person.updatePosition(personPosition);
+      this.viewer.camera.lookAt(
+        currentPos,
+        new Cesium.HeadingPitchRange(heading, pitch, range)
+      );
+    };
 
-    const cameraState = this.tour.cameraTrack[trackIndex];
-
-    if (this.cameraStrategy === 'top-down') {
-      // Calculate fixed camera position once when tour starts
-      if (!this.fixedTopDownCameraPosition) {
-        this.fixedTopDownCameraPosition = Cesium.Cartesian3.fromDegrees(
-          Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).longitude),
-          Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).latitude),
-          this.maxRouteElevation * 20 + 500 // 2 times max elevation + some offset
-        );
-        //this.viewer.camera.flyTo({
-        //    destination: this.fixedTopDownCameraPosition
-        //});
-        this.viewer.zoomTo(this.fixedTopDownCameraPosition);
-      }
-      //this.viewer.camera.position = this.fixedTopDownCameraPosition;
-      //this.viewer.camera.lookAt(this.person.entity.position.getValue(this.viewer.clock.currentTime), Cesium.Cartesian3.UNIT_Z);
-      //this.viewer.camera.lookAt(personPosition, Cesium.Cartesian3.UNIT_Z);
-
-      var transform = Cesium.Transforms.eastNorthUpToFixedFrame(personPosition);
-      this.viewer.scene.camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(0, -Math.PI/8, 2900));
-
-    } else if (this.cameraStrategy === 'third-person') {
-      this.viewer.camera.setView({
-        destination: cameraState.position,
-        orientation: cameraState.orientation,
-      });
-    }
-
-    // Update camera info display
-    const cameraInfoContent = document.getElementById('camera-info-content');
-    cameraInfoContent.innerHTML = `
-      <p>Heading: ${Cesium.Math.toDegrees(cameraState.orientation.heading).toFixed(2)}</p>
-      <p>Pitch: ${Cesium.Math.toDegrees(cameraState.orientation.pitch).toFixed(2)}</p>
-      <p>Roll: ${Cesium.Math.toDegrees(cameraState.orientation.roll).toFixed(2)}</p>
-      <p>Height: ${this.cameraHeight} m</p>
-    `;
-
-    this.animationRequest = window.requestAnimationFrame(this.animate);
+    this.viewer.scene.postUpdate.addEventListener(listener);
+    this.cameraListeners['overhead'] = () => this.viewer.scene.postUpdate.removeEventListener(listener);
   }
 
   /**
@@ -164,53 +257,50 @@ class TourController {
    */
   stopTour() {
     logger.info('Stopping tour.');
-    if (this.animationRequest) {
-      window.cancelAnimationFrame(this.animationRequest);
-      this.animationRequest = null;
-      this.tour = null;
-      this.fixedTopDownCameraPosition = null;
+    if (this.viewer.clock.shouldAnimate) {
+      this.viewer.clock.shouldAnimate = false;
     }
+    if (this.tour) {
+      this.viewer.clock.currentTime = this.tour.startTime.clone();
+    }
+    this._cleanupCamera();
   }
 
   /**
-   * Sets the speed of the tour.
-   * @param {number} speed - The tour speed (1-10).
+   * Sets the speed of the tour relative to the default speed.
+   * @param {number} relativeSpeed - The relative speed multiplier (e.g., 1 for default, 2 for double speed).
    */
-  setSpeed(speed) {
-    this.tourSpeed = speed;
-    logger.info(`Tour speed set to: ${speed}`);
+  setSpeed(relativeSpeed) {
+    this.speedController.setRelativeSpeed(relativeSpeed);
   }
 
+  // Note: setHeading, setPitch, setRoll, setHeight are currently not used by these strategies
+  // but are kept for potential future use.
   setHeading(heading) {
-    this.cameraHeading = heading;
-    this.regenerateTour();
+    // this.cameraHeading = heading;
   }
 
   setPitch(pitch) {
-    this.cameraPitch = pitch;
-    this.regenerateTour();
+    // this.cameraPitch = pitch;
   }
 
   setRoll(roll) {
-    this.cameraRoll = roll;
-    this.regenerateTour();
+    // this.cameraRoll = roll;
   }
 
   setHeight(height) {
-    this.cameraHeight = height;
-    this.regenerateTour();
+    // this.cameraHeight = height;
   }
 
   regenerateTour() {
     if (this.tour) {
-      this.fixedTopDownCameraPosition = null;
       this.startTour(this.tour.points, this.routeCenter, this.maxRouteElevation);
     }
   }
 
   setCameraStrategy(strategy) {
     this.cameraStrategy = strategy;
-    this.regenerateTour();
+    this._applyCameraStrategy();
   }
 }
 

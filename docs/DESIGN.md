@@ -10,146 +10,107 @@ The application is a purely client-side, single-page application (SPA) that runs
 
 ### 2.1. Core Technologies
 
-*   **3D Rendering Engine:** **CesiumJS** will be the cornerstone of the application.
-*   **GPX Parsing:** The lightweight **`gpxparser`** library will be used.
-*   **UI:** The UI will be constructed with **plain HTML, CSS, and modern JavaScript**.
-*   **Modularity:** All JavaScript code will be structured using **ES6 Modules** (`import`/`export` syntax) to ensure a clean, maintainable, and scalable architecture. Each file will represent a distinct module.
-*   **Logging:** A lightweight, open-source logging library (e.g., **`loglevel`**) will be integrated to provide comprehensive and controllable logging throughout the application.
+*   **3D Rendering Engine:** **CesiumJS** is the cornerstone of the application.
+*   **GPX Parsing:** The lightweight **`gpxparser`** library is used.
+*   **UI:** The UI is constructed with **plain HTML, CSS, and modern JavaScript**.
+*   **Modularity:** All JavaScript code is structured using **ES6 Modules** (`import`/`export` syntax) to ensure a clean, maintainable, and scalable architecture. Each file represents a distinct module.
+*   **Logging:** A custom `Logger.js` module prepends timestamps to all console messages.
 
 ### 2.2. External Services
 
-The application will rely on several external APIs:
+The application relies on several external APIs:
 
-*   **Terrain and Elevation:** **Cesium World Terrain**, a high-resolution global terrain dataset, will be used for both 3D terrain visualization and for fetching elevation data for 2D GPX files.
-*   **Points of Interest (POI):** The **OpenStreetMap Overpass API** will be queried to find relevant POIs near the loaded route.
-*   **Reverse Geocoding:** A free, public reverse geocoding service (e.g., Nominatim) will be used to convert the start and end coordinates of the route into human-readable location names for the filename suggestion.
+*   **Terrain and Elevation:** **Cesium World Terrain**, a high-resolution global terrain dataset, is used for both 3D terrain visualization and for fetching elevation data for 2D GPX files.
+*   **Points of Interest (POI):** The **OpenStreetMap Overpass API** is queried to find relevant POIs near the loaded route.
+*   **Reverse Geocoding:** A free, public reverse geocoding service (Nominatim) is used to convert the start and end coordinates of the route into human-readable location names for the filename suggestion.
 
 ## 3. Component Design
 
-The application will be architected in a modular fashion, with distinct components responsible for specific functionalities.
+The application is architected in a modular fashion, with distinct components responsible for specific functionalities.
 
 ### 3.1. `App` (Main Controller)
 *   **Description:** The central orchestrator of the application.
 *   **Responsibilities:**
-    *   Initializes all other components.
-    *   Manages the overall application state.
-    *   Handles the main event flow (e.g., file loaded -> parse -> render).
+    *   Initializes all other components (`UIManager`, `TourController`, etc.).
+    *   Manages the overall application state (e.g., `currentPoints`).
+    *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers.
 
 ### 3.2. `UIManager`
 *   **Description:** Manages all interactions with the DOM.
 *   **Responsibilities:**
-    *   Handles event listeners for file input, buttons, and sliders.
-    *   Updates the UI to display route statistics, POIs, and filename suggestions.
-    *   Shows/hides loading indicators and modal dialogs (e.g., for manual enrichment instructions).
+    *   Holds references to all interactive DOM elements.
+    *   Initializes all UI event listeners (file input, buttons, sliders).
+    *   Provides public methods for the `App` controller to update the UI (e.g., `updateStatsContent`, `showLoadingIndicator`).
+    *   Provides public getter methods for the `App` controller to retrieve UI state (e.g., `getRouteColor`).
+    *   Fires callbacks to notify the `App` controller of user actions.
 
-### 3.3. `GpxParser`
-*   **Description:** A wrapper around the `gpx-parser-builder` library.
+### 3.3. `TourController`
+*   **Description:** Manages the logic for the cinematic tour, camera strategies, and playback.
 *   **Responsibilities:**
-    *   Takes a raw GPX file string as input.
-    *   Parses the string and extracts track points, waypoints, and metadata.
-    *   Returns a standardized data structure (see Data Model section) for the rest of the application to use.
+    *   Takes the `Person` entity as input.
+    *   Populates a `Cesium.SampledPositionProperty` with the route's position and time data.
+    *   Manages the Cesium `Clock` to control playback (start, stop, speed).
+    *   Manages the selection and application of different camera strategies.
+    *   Synthesizes timestamp data for GPX files that lack it, enabling playback for all valid tracks.
 
-### 3.4. `CesiumViewer`
-*   **Description:** Manages the CesiumJS instance and all 3D scene manipulations.
+### 3.4. `SpeedController`
+*   **Description:** A dedicated class to manage all aspects of tour playback speed.
 *   **Responsibilities:**
-    *   Initializes the Cesium `Viewer` object.
-    *   Renders the 3D route path (as a `Polyline` entity).
-    *   Renders waypoints and POIs (as `Billboard` entities).
-    *   Manages camera controls and animations for the cinematic tour.
-    *   Provides methods to add/remove entities from the scene.
+    *   Calculates a "smart" default speed to target a consistent tour duration (e.g., 90 seconds).
+    *   Handles relative speed adjustments from the UI slider.
+    *   Applies the final calculated speed multiplier to the Cesium `Clock`.
 
-### 3.5. `TourController`
-*   **Description:** Manages the logic for the cinematic tour and orchestrates camera behavior.
-*   **Responsibilities:**
-    *   Takes the `Person` entity as input to animate along the route.
-    *   Generates the *Person's* movement path using a Catmull-Rom or Hermite spline.
-    *   Manually controls the `CesiumViewer`'s camera to implement different camera strategies (e.g., Top-Down, Third-Person) relative to the `Person` entity.
-    *   Controls the animation loop (`requestAnimationFrame`) to update the `Person`'s position and the camera's view for each frame of the tour.
-
-### 3.6. `Person`
+### 3.5. `Person`
 *   **Description:** Represents the moving entity that traverses the GPX route during the tour.
 *   **Responsibilities:**
-    *   Creates and manages a Cesium `Entity` (e.g., an ellipsoid or model) in the `CesiumViewer`.
-    *   Provides methods to update its position on the globe, animated by the `TourController`.
+    *   Creates and manages a Cesium `Entity` with a `Billboard` and a `Label`.
+    *   Its `position` property is assigned the `SampledPositionProperty` from the `TourController`, allowing Cesium to drive its animation automatically.
+    *   Provides an `updateStyle` method to change its color and size dynamically.
 
-### 3.7. `EnrichmentService`
-*   **Description:** Handles the 2D-to-3D data enrichment.
+### 3.6. `PoiService` & Other Services
+*   **Description:** A collection of modules responsible for fetching and processing external data.
 *   **Responsibilities:**
-    *   Takes an array of 2D coordinates.
-    *   Uses Cesium's `sampleTerrainMostDetailed` function to query the terrain provider for the elevation of each point.
-    *   Returns the updated array of 3D coordinates.
+    *   `PoiService`: Fetches and processes POI data from the Overpass API.
+    *   `ReverseGeocodingService`: Converts coordinates to location names.
+    *   `StatisticsCalculator`: Calculates route distance and elevation gain.
 
-### 3.7. `PoiService`
-*   **Description:** Fetches and processes POI data.
+### 3.7. `Logger`
+*   **Description:** A centralized logging utility.
 *   **Responsibilities:**
-    *   Constructs a query for the Overpass API based on the bounding box of the loaded route.
-    *   Sends the request and parses the JSON response.
-    *   Filters and formats the POI data for display.
-
-### 3.8. `Logger`
-*   **Description:** A centralized logging utility for the entire application.
-*   **Responsibilities:**
-    *   Initializes and configures the chosen logging library (e.g., `loglevel`).
-    *   Provides a simple, static interface for logging messages at different levels (e.g., `Logger.info()`, `Logger.warn()`, `Logger.error()`).
-    *   Prepends all log messages with a timestamp and the name of the calling module to provide context.
-    *   Manages the collection of logs for potential download by the user.
+    *   Prepends all log messages with an ISO-formatted timestamp.
 
 ## 4. Data Flow
 
 1.  **User selects a GPX file.** (`UIManager`)
-2.  The file is read as a string. (`UIManager`)
-3.  The string is passed to the `GpxParser`. (`App`)
-4.  The parsed data is returned. (`GpxParser`)
-5.  The `App` checks if the data has elevation. If not, it consults the `EnrichmentService`.
-6.  The (now 3D) route data is passed to the `CesiumViewer`, which renders the path.
-7.  The route data is passed to the `PoiService` and a reverse geocoding service to fetch external data.
-8.  The results are passed to the `UIManager` to be displayed.
-9.  If the user starts the tour, the `TourController` is initialized with the route data and takes control of the `CesiumViewer`'s camera.
+2.  The `onFileSelected` callback is fired, notifying the `App` controller.
+3.  `App` reads the file and uses `gpx-parser` to get the points.
+4.  `App` checks if the data has elevation. If not, it uses `Cesium.sampleTerrainMostDetailed` to enrich it.
+5.  `App` calls `renderRoute`, which in turn calls `updateRouteStyle` to draw the polyline on the map.
+6.  `App` fetches POIs and reverse geocoding data and updates the UI via the `UIManager`.
+7.  When the user clicks "Start Tour", `App` calls `tourController.startTour()`.
+8.  `TourController` populates the `SampledPositionProperty` and configures the `Clock`.
+9.  `TourController` initializes the `SpeedController` with the route's duration.
+10. `TourController` applies the default camera strategy.
+11. The user interacts with the timeline or speed slider, which updates the `Clock` via the `UIManager` -> `App` -> `TourController` -> `SpeedController` chain.
 
-## 5. Data Model
+## 5. Camera Strategy Architecture
 
-The application will use a consistent data structure for route points:
+The cinematic tour is no longer driven by a manual `requestAnimationFrame` loop. Instead, it leverages Cesium's native, time-based animation system, which is more robust and performant.
 
-```javascript
-// A single point in the route
-interface RoutePoint {
-  longitude: number;
-  latitude: number;
-  elevation: number;
-}
+The `TourController` manages a dictionary of camera strategy functions. When a strategy is selected, the `_applyCameraStrategy` method is called, which first calls `_cleanupCamera` to remove any previous listeners or tracked entities, then executes the function for the newly selected strategy.
 
-// The main route data object
-interface RouteData {
-  points: RoutePoint[];
-  waypoints: RoutePoint[];
-  stats: {
-    distance: number;
-    elevationGain: number;
-```
+### 5.1. Third-Person Follow
+*   **Implementation:** Uses Cesium's native `viewer.trackedEntity` property.
+*   **Logic:** The camera is told to track the `Person` entity. The initial view is zoomed to show all entities (the entire route), providing context before the tour begins.
 
-## 6. Camera Strategy
+### 5.2. Top-Down Tracking
+*   **Implementation:** A single call to `viewer.camera.setView()`.
+*   **Logic:** The camera is moved to a static position high above the calculated center of the route, looking straight down. It does not move or rotate during the tour.
 
-The cinematic tour is powered by a moving `Person` entity, which the camera then tracks based on the selected strategy. This approach ensures a smooth and stable camera motion, free from real-time calculation jitters.
+### 5.3. First-Person (Chase Camera)
+*   **Implementation:** A listener on the `viewer.clock.onTick` event.
+*   **Logic:** On each tick of the simulation clock, the camera is positioned at a fixed offset (e.g., 50 meters behind and 25 degrees pitched down) relative to the Person entity's current position and orientation, using `viewer.camera.lookAtTransform()`.
 
-### 6.1. Third-Person Follow (Default)
-
-This strategy positions the camera behind and slightly above the `Person` entity, always looking at it. The camera's position and orientation are dynamically adjusted to maintain this perspective as the `Person` moves along the route.
-
-*   **Person Position:** The `Person` entity's position is updated using a `CatmullRomSpline` generated from the original GPX route points.
-*   **Camera Position & Orientation:** The camera's position and orientation are determined by a pre-calculated `cameraTrack` (generated from an elevated spline) and applied manually using `viewer.camera.setView()`.
-
-### 6.2. Top-Down Tracking
-
-This strategy provides a static, bird's-eye view of the `Person` entity as it traverses the route. The camera's position remains fixed, and only its orientation changes to keep the `Person` in view.
-
-*   **Person Position:** The `Person` entity's position is updated using a `CatmullRomSpline` generated from the original GPX route points.
-*   **Camera Position:** Fixed at a calculated point high above the center of the route. The height is typically a multiple of the route's maximum elevation. This position is set once at the start of the tour.
-*   **Camera Orientation:** The camera's `lookAt` function is used to continuously point towards the `Person` entity as it moves. This automatically adjusts the camera's heading and pitch.
-
-### 6.3. Adding New Camera Strategies
-
-The system is designed to be extensible with new camera strategies. To add a new strategy:
-
-1.  **Define Strategy Logic:** In `TourController.js`, implement the logic for the new camera behavior within the `animate` method's conditional blocks. This will involve manually setting the `viewer.camera.position` and `viewer.camera.orientation` (or using `viewer.camera.lookAt`) based on the desired perspective relative to the `Person` entity.
-2.  **Add a UI Selector:** In `index.html` and `app.js`, add a dropdown option or radio buttons to allow the user to select the new camera strategy.
-3.  **Integrate into `animate`:** In the `animate` method of `TourController.js`, add a conditional block to apply the new strategy's logic based on the user's selection.
+### 5.4. Overhead Orbit
+*   **Implementation:** A listener on the `viewer.scene.postUpdate` event.
+*   **Logic:** After each scene update, the camera's view is set using `viewer.camera.lookAt()`. The heading is calculated based on the tour's percentage complete (`tourProgress * 360`), ensuring it completes exactly one full rotation over the tour's duration. The pitch and range are fixed to maintain a consistent orbiting view.

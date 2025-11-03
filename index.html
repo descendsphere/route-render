@@ -4,152 +4,121 @@
   <meta charset="UTF-8">
   <title>GPX 3D Route Renderer</title>
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
-  <style>
-    html, body, #cesiumContainer {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    #controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(42, 42, 42, 0.8);
-      padding: 10px;
-      border-radius: 5px;
-      color: white;
-      font-family: sans-serif;
-    }
-    .panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: 300px;
-      background: rgba(42, 42, 42, 0.8);
-      color: white;
-      font-family: sans-serif;
-      border-radius: 5px;
-      transition: width 0.3s;
-    }
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px;
-      cursor: pointer;
-    }
-    .panel-content {
-      padding: 10px;
-    }
-    .panel.collapsed .panel-content {
-      display: none;
-    }
-    .panel.collapsed {
-      width: 40px;
-    }
-    #loading-indicator {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 10;
-    }
-    .spinner {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 50px;
-      height: 50px;
-      margin-top: -25px;
-      margin-left: -25px;
-      border: 5px solid #f3f3f3;
-      border-top: 5px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
+  <link href="style.css" rel="stylesheet">
 </head>
 <body>
-  <div id="cesiumContainer"></div>
-  <div id="loading-indicator" style="display: none;">
-    <div class="spinner"></div>
-  </div>
-  <div id="side-panel" class="panel">
+
+<div id="cesiumContainer"></div>
+
+<div id="panel-container">
+  <div id="side-panel">
     <div class="panel-header">
-      <h3>Controls</h3>
+      <h1>GPX 3D Renderer</h1>
       <button id="panel-toggle">-</button>
     </div>
     <div id="panel-content">
-      <input type="file" id="gpx-file" accept=".gpx">
-              <div id="tour-controls" style="display: none; margin-top: 10px;">
-                <button id="play-tour">Play Tour</button>
-                <button id="pause-tour">Pause Tour</button>
-                <button id="stop-tour">Stop Tour</button>
-                <button id="zoom-to-route">Zoom to Route</button>        <div style="margin-top: 5px;">
+      <div class="control-group">
+        <input type="file" id="gpx-file" accept=".gpx">
+      </div>
+
+      <div id="tour-controls" class="control-group" style="display: none;">
+        <h4>Tour</h4>
+        <div class="tour-buttons">
+          <button id="play-tour">Start Tour</button>
+          <button id="stop-tour">Reset Tour</button>
+          <button id="zoom-to-route">Zoom to Route</button>
+          <button id="reset-style">Reset Style</button>
+        </div>
+        <div class="slider-group">
           <label for="tour-speed">Speed:</label>
-          <input type="range" id="tour-speed" min="1" max="10" value="5">
+          <input type="range" id="tour-speed" min="0.25" max="8" step="0.25" value="1">
+          <span id="speed-display">1.00x</span>
         </div>
       </div>
-      <div id="route-stats" style="display: none; margin-top: 10px;">
-        <h4>Route Statistics</h4>
-        <div id="stats-content"></div>
+
+      <div id="camera-strategy-controls" class="control-group" style="display: none;">
+        <h4>Camera</h4>
+        <select id="camera-strategy">
+          <option value="third-person">Third-Person</option>
+          <option value="top-down">Top-Down</option>
+          <option value="first-person">First-Person</option>
+          <option value="overhead" selected>Overhead</option>
+        </select>
       </div>
-                      <div id="filename-suggestion" style="display: none; margin-top: 10px;">
-                        <h4>Suggested Filename</h4>
-                        <div id="filename-content"></div>
-                      </div>
-                              <div id="style-controls" style="display: none; margin-top: 10px;">
-                                <h4>Style Controls</h4>
-                                <div>
-                                  <label for="route-color">Color:</label>
-                                  <input type="color" id="route-color" value="#ff0000">
-                                </div>
-                                <div style="margin-top: 5px;">
-                                  <label for="route-width">Width:</label>
-                                  <input type="range" id="route-width" min="1" max="20" value="5">
-                                </div>
-                              </div>
-                              <div id="camera-strategy-controls" style="display: none; margin-top: 10px;">
-                                <h4>Camera Strategy</h4>
-                                <select id="camera-strategy">
-                                  <option value="top-down">Top-Down Tracking</option>
-                                  <option value="third-person">Third-Person Follow</option>
-                                </select>
-                              </div>        <div id="camera-info" style="display: none; margin-top: 10px;">
-          <h4>Camera Info</h4>
-          <div id="camera-info-content"></div>
-          <div id="camera-controls" style="margin-top: 10px;">
-            <div>
-              <label for="camera-heading">Heading:</label>
-              <input type="range" id="camera-heading" min="-180" max="180" value="0">
+
+      <div id="style-controls" class="control-group" style="display: none;">
+          <h4>Style</h4>
+          <div>
+            <h5>Route</h5>
+            <div class="color-input-group">
+              <label for="route-color">Color:</label>
+              <input type="color" id="route-color" value="#FFA500">
             </div>
-            <div style="margin-top: 5px;">
-              <label for="camera-pitch">Pitch:</label>
-              <input type="range" id="camera-pitch" min="-90" max="0" value="-45">
+            <div class="number-input-group">
+              <label for="route-width">Width:</label>
+              <input type="number" id="route-width" min="1" max="20" value="2">
             </div>
-            <div style="margin-top: 5px;">
-              <label for="camera-roll">Roll:</label>
-              <input type="range" id="camera-roll" min="-90" max="90" value="0">
+            <input type="checkbox" id="clamp-to-ground" checked>
+            <label for="clamp-to-ground">Clamp to Ground</label>
+          </div>
+          <div id="person-style-controls">
+            <h5>Person</h5>
+            <div class="color-input-group">
+              <label for="person-color">Color:</label>
+              <input type="color" id="person-color" value="#FFA500">
             </div>
-            <div style="margin-top: 5px;">
-              <label for="camera-height">Height:</label>
-              <input type="range" id="camera-height" min="50" max="1000" value="200">
+            <div class="number-input-group">
+              <label for="person-size">Size:</label>
+              <input type="number" id="person-size" min="1" max="10" value="2">
             </div>
           </div>
-        </div>    </div>
-  </div>
+      </div>
 
-  <script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script>
-  <script src="https://unpkg.com/gpxparser@3.0.8/dist/GPXParser.min.js"></script>
-  <script src="https://unpkg.com/loglevel/dist/loglevel.min.js"></script>
-  <script type="module" src="app.js"></script>
+      <div id="route-stats" class="control-group" style="display: none;">
+        <h4>Statistics</h4>
+        <div id="stats-content"></div>
+      </div>
+
+      <div id="filename-suggestion" class="control-group" style="display: none;">
+        <h4>Suggested Filename</h4>
+        <p id="filename-content" style="word-wrap: break-word;"></p>
+      </div>
+
+      <div id="camera-info" class="control-group" style="display: none;">
+        <h4>Camera Info</h4>
+        <div id="camera-info-content"></div>
+        <div id="camera-controls" style="margin-top: 10px;">
+          <div class="slider-group">
+            <label for="camera-heading">Heading:</label>
+            <input type="range" id="camera-heading" min="-180" max="180" value="0">
+          </div>
+          <div class="slider-group" style="margin-top: 5px;">
+            <label for="camera-pitch">Pitch:</label>
+            <input type="range" id="camera-pitch" min="-90" max="0" value="-45">
+          </div>
+          <div class="slider-group" style="margin-top: 5px;">
+            <label for="camera-roll">Roll:</label>
+            <input type="range" id="camera-roll" min="-90" max="90" value="0">
+          </div>
+          <div class="number-input-group" style="margin-top: 5px;">
+            <label for="camera-height">Height:</label>
+            <input type="number" id="camera-height" min="50" max="1000" value="200">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="loading-indicator" style="display: none;">
+  <div class="spinner"></div>
+  <p>Loading...</p>
+</div>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script>
+<script src="https://unpkg.com/gpxparser@3.0.8/dist/GPXParser.min.js"></script>
+<script src="https://unpkg.com/loglevel/dist/loglevel.min.js"></script>
+<script type="module" src="app.js"></script>
+
 </body>
 </html>
