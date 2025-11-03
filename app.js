@@ -71,7 +71,7 @@ class App {
   initCesium() {
     logger.info('Initializing Cesium viewer.');
     // Note: Using a default access token for Cesium Ion. For a production app, you should create your own token.
-    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlMzUyZmE4NC01NGViLTQ0YWYtOGFhOS00ZDI0ZjcyZGZiYTgiLCJpZCI6MzU1Mzk4LCJpYXQiOjE3NjE4MDMyMjF9.qjUg_rgsOuIkiCVKsahiTpfRzUqccBPp6M_KkDKVz2o';
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1Njg3Zjk2Yy02ZjM4LTRkM2QtYjY4MC1kN2ZkNWU4N2M3NjYiLCJpZCI6MzU1Mzk4LCJpYXQiOjE3NjIxNzc1OTR9.bWw5GgYYaFW-JZ2AJr6GHBEZq4tohQF8qea5FJ7eaao';
 
     this.viewer = new Cesium.Viewer('cesiumContainer', {
       terrain: Cesium.Terrain.fromWorldTerrain(),
