@@ -184,6 +184,48 @@ input[type="color"] {
   margin-bottom: 0;
 }
 
+/* New styles for inline controls */
+.inline-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.number-input-widget {
+  display: flex;
+  align-items: center;
+}
+
+.number-input-widget button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 30px;
+  text-align: center;
+  border-radius: 50%;
+}
+
+.number-input-widget span {
+  width: 40px;
+  text-align: center;
+  font-size: 1.1em;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.checkbox-group label {
+  margin-bottom: 0;
+}
+
 /* Button styling */
 .tour-buttons {
   display: flex;

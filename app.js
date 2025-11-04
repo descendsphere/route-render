@@ -357,9 +357,9 @@ class App {
       this.viewer.entities.remove(this.routeEntity);
     }
 
-    const clampToGround = document.getElementById('clamp-to-ground').checked;
-    const color = document.getElementById('route-color').value;
-    const width = parseInt(document.getElementById('route-width').value, 10);
+    const clampToGround = this.ui.getClampToGroundChecked();
+    const color = this.ui.getRouteColor();
+    const width = this.ui.getRouteWidth();
 
     const polylineOptions = {
       width: width,
@@ -405,19 +405,19 @@ class App {
 
     // Reset UI controls to their default values
     this.ui.routeColorInput.value = '#FFA500';
-    this.ui.routeWidthInput.value = 2;
+    this.ui.routeWidthDisplay.textContent = 2;
     this.ui.clampToGroundInput.checked = true;
     this.ui.personColorInput.value = '#FFA500';
-    this.ui.personSizeInput.value = 1;
+    this.ui.personSizeDisplay.textContent = 1;
     this.ui.cameraStrategyInput.value = 'overhead';
     this.ui.speedSlider.value = 1;
 
     // Programmatically trigger events to apply the changes
     this.ui.routeColorInput.dispatchEvent(new Event('input'));
-    this.ui.routeWidthInput.dispatchEvent(new Event('input'));
+    this.ui.onUpdateRouteWidth(); // Directly call the update method
     this.ui.clampToGroundInput.dispatchEvent(new Event('change'));
     this.ui.personColorInput.dispatchEvent(new Event('input'));
-    this.ui.personSizeInput.dispatchEvent(new Event('input'));
+    this.ui.onUpdatePersonStyle({ size: 1 }); // Directly call the update method
     this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
     this.ui.speedSlider.dispatchEvent(new Event('input'));
   }

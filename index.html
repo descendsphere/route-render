@@ -49,26 +49,40 @@
           <h4>Style</h4>
           <div>
             <h5>Route</h5>
-            <div class="color-input-group">
-              <label for="route-color">Color:</label>
-              <input type="color" id="route-color" value="#FFA500">
+            <div class="inline-controls">
+              <div class="color-input-group">
+                <label for="route-color">Color:</label>
+                <input type="color" id="route-color" value="#FFA500">
+              </div>
+              <div class="number-input-group">
+                <label for="route-width">Width:</label>
+                <div class="number-input-widget">
+                  <button id="route-width-decrement">-</button>
+                  <span id="route-width-display">2</span>
+                  <button id="route-width-increment">+</button>
+                </div>
+              </div>
             </div>
-            <div class="number-input-group">
-              <label for="route-width">Width:</label>
-              <input type="number" id="route-width" min="1" max="20" value="2">
+            <div class="checkbox-group">
+              <input type="checkbox" id="clamp-to-ground" checked>
+              <label for="clamp-to-ground">Clamp to Ground</label>
             </div>
-            <input type="checkbox" id="clamp-to-ground" checked>
-            <label for="clamp-to-ground">Clamp to Ground</label>
           </div>
           <div id="person-style-controls">
             <h5>Person</h5>
-            <div class="color-input-group">
-              <label for="person-color">Color:</label>
-              <input type="color" id="person-color" value="#FFA500">
-            </div>
-            <div class="number-input-group">
-              <label for="person-size">Size:</label>
-              <input type="number" id="person-size" min="1" max="10" value="2">
+            <div class="inline-controls">
+              <div class="color-input-group">
+                <label for="person-color">Color:</label>
+                <input type="color" id="person-color" value="#FFA500">
+              </div>
+              <div class="number-input-group">
+                <label for="person-size">Size:</label>
+                <div class="number-input-widget">
+                  <button id="person-size-decrement">-</button>
+                  <span id="person-size-display">1</span>
+                  <button id="person-size-increment">+</button>
+                </div>
+              </div>
             </div>
           </div>
       </div>

@@ -26,10 +26,14 @@ class UIManager {
     this.speedSlider = document.getElementById('tour-speed');
     this.speedDisplay = document.getElementById('speed-display');
     this.routeColorInput = document.getElementById('route-color');
-    this.routeWidthInput = document.getElementById('route-width');
-    this.cameraStrategyInput = document.getElementById('camera-strategy');
+    this.routeWidthDecrement = document.getElementById('route-width-decrement');
+    this.routeWidthDisplay = document.getElementById('route-width-display');
+    this.routeWidthIncrement = document.getElementById('route-width-increment');
     this.personColorInput = document.getElementById('person-color');
-    this.personSizeInput = document.getElementById('person-size');
+    this.personSizeDecrement = document.getElementById('person-size-decrement');
+    this.personSizeDisplay = document.getElementById('person-size-display');
+    this.personSizeIncrement = document.getElementById('person-size-increment');
+    this.cameraStrategyInput = document.getElementById('camera-strategy');
     this.clampToGroundInput = document.getElementById('clamp-to-ground');
 
     this.loadingIndicator = document.getElementById('loading-indicator');
@@ -83,12 +87,46 @@ class UIManager {
     });
 
     this.routeColorInput.addEventListener('input', () => this.onUpdateRouteColor());
-    this.routeWidthInput.addEventListener('input', () => this.onUpdateRouteWidth());
+
+    this.routeWidthDecrement.addEventListener('click', () => {
+      let width = parseInt(this.routeWidthDisplay.textContent, 10);
+      if (width > 1) {
+        width--;
+        this.routeWidthDisplay.textContent = width;
+        this.onUpdateRouteWidth();
+      }
+    });
+
+    this.routeWidthIncrement.addEventListener('click', () => {
+      let width = parseInt(this.routeWidthDisplay.textContent, 10);
+      if (width < 20) {
+        width++;
+        this.routeWidthDisplay.textContent = width;
+        this.onUpdateRouteWidth();
+      }
+    });
 
     this.cameraStrategyInput.addEventListener('change', (event) => this.onSetCameraStrategy(event.target.value));
 
     this.personColorInput.addEventListener('input', (event) => this.onUpdatePersonStyle({ color: event.target.value }));
-    this.personSizeInput.addEventListener('input', (event) => this.onUpdatePersonStyle({ size: parseFloat(event.target.value) }));
+
+    this.personSizeDecrement.addEventListener('click', () => {
+      let size = parseFloat(this.personSizeDisplay.textContent);
+      if (size > 0.5) {
+        size -= 0.1;
+        this.personSizeDisplay.textContent = size.toFixed(1);
+        this.onUpdatePersonStyle({ size: size });
+      }
+    });
+
+    this.personSizeIncrement.addEventListener('click', () => {
+      let size = parseFloat(this.personSizeDisplay.textContent);
+      if (size < 3) {
+        size += 0.1;
+        this.personSizeDisplay.textContent = size.toFixed(1);
+        this.onUpdatePersonStyle({ size: size });
+      }
+    });
 
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
   }
@@ -161,7 +199,7 @@ class UIManager {
   }
 
   getRouteWidth() {
-    return parseInt(this.routeWidthInput.value, 10);
+    return parseInt(this.routeWidthDisplay.textContent, 10);
   }
 
   getClampToGroundChecked() {
@@ -173,7 +211,7 @@ class UIManager {
   }
 
   getPersonSize() {
-    return parseFloat(this.personSizeInput.value);
+    return parseFloat(this.personSizeDisplay.textContent);
   }
 
   getCameraStrategy() {
