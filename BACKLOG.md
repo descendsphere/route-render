@@ -17,7 +17,7 @@ This file contains a list of proposed features, enhancements, and bug fixes for 
 ## Core Functionality Enhancements
 
 - **[FEATURE] Accurate POI/Waypoint Altitude:** Use `Cesium.sampleTerrainMostDetailed` to fetch the correct terrain height for all POIs and waypoints, ensuring they are rendered at their true altitude instead of being clamped to the ground.
-- **[FEATURE] Local Time Display:** Change the "Person" entity's label to display the current tour time in the user's local time zone instead of UTC.
+- **[FIXED] Local Time Display:** Changed the "Person" entity's label to display the current tour time in the user's local time zone instead of UTC.
 
 ## Code Architecture
 

@@ -57,7 +57,18 @@ class App {
     this.viewer.scene.postRender.addEventListener(() => {
       if (this.tourController.tour && this.viewer.clock.shouldAnimate) {
         const currentTime = this.viewer.clock.currentTime;
-        const timeString = Cesium.JulianDate.toIso8601(currentTime, 2).replace('T', ' ').replace('Z', '');
+        const jsDate = Cesium.JulianDate.toDate(currentTime);
+
+        // Manual formatting to yyyy-mm-dd hh:mm:ss
+        const year = jsDate.getFullYear();
+        const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = jsDate.getDate().toString().padStart(2, '0');
+        const hours = jsDate.getHours().toString().padStart(2, '0');
+        const minutes = jsDate.getMinutes().toString().padStart(2, '0');
+        const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+
+        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
         if (this.person.entity && this.person.entity.label) {
           this.person.entity.label.text = timeString;
         }
