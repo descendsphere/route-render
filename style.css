@@ -17,7 +17,7 @@ html, body, #cesiumContainer {
 #side-panel {
   background: rgba(38, 38, 38, 0.85);
   backdrop-filter: blur(5px);
-  padding: 10px; /* Adjusted padding */
+  padding: 10px;
   border-radius: 8px;
   color: white;
   max-height: 95vh;
@@ -25,27 +25,28 @@ html, body, #cesiumContainer {
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   width: 320px;
   transition: transform 0.3s ease-in-out;
+  transform: translateX(0);
 }
 
 #side-panel.collapsed {
-  transform: translateX(-330px);
+  transform: translateX(-100%);
 }
 
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 0; /* Adjusted padding */
+  padding: 10px 0;
   cursor: pointer;
   border-bottom: 1px solid #444;
-  width: 85%; /* New width */
-  margin: 0 auto; /* Center horizontally */
+  width: 85%;
+  margin: 0 auto;
 }
 
 .panel-content {
-  padding: 15px 0; /* Adjusted padding */
-  width: 85%; /* New width */
-  margin: 0 auto; /* Center horizontally */
+  padding: 15px 0;
+  width: 85%;
+  margin: 0 auto;
 }
 
 #side-panel.collapsed .panel-content {
@@ -53,16 +54,26 @@ html, body, #cesiumContainer {
 }
 
 #panel-toggle {
-  width: 24px;
-  height: 24px;
-  background: #444;
+  position: absolute;
+  top: 10px;
+  right: -40px; /* Position it outside the panel */
+  width: 30px;
+  height: 30px;
+  background: rgba(38, 38, 38, 0.85);
+  backdrop-filter: blur(5px);
   color: white;
   border: none;
-  border-radius: 50%;
+  border-radius: 0 5px 5px 0;
   cursor: pointer;
   font-size: 16px;
-  line-height: 24px;
+  line-height: 30px;
   text-align: center;
+  box-shadow: 2px 0px 5px rgba(0,0,0,0.3);
+  transition: transform 0.3s ease-in-out;
+}
+
+#side-panel.collapsed + #panel-toggle {
+  transform: translateX(-320px); /* Move button with the panel */
 }
 
 h1, h2, h3, h4, h5 {
@@ -93,7 +104,7 @@ label {
 
 /* General input styling */
 input[type="file"], input[type="number"], select {
-  width: 100%; /* These should take full width */
+  width: 100%;
   margin-bottom: 10px;
   box-sizing: border-box;
   padding: 8px;
@@ -114,7 +125,7 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 60px; /* Fixed width for label */
+  width: 60px;
 }
 
 .slider-group input[type="range"] {
@@ -125,7 +136,7 @@ input[type="file"], input[type="number"], select {
 .slider-group span {
   flex-shrink: 0;
   margin-left: 10px;
-  width: 40px; /* Fixed width for display */
+  width: 40px;
   text-align: right;
 }
 
@@ -140,11 +151,11 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 60px; /* Fixed width for label */
+  width: 60px;
 }
 
 .number-input-group input[type="number"] {
-  width: 80px; /* Smaller fixed width */
+  width: 80px;
   margin-bottom: 0;
 }
 
@@ -159,7 +170,7 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 60px; /* Fixed width for label */
+  width: 60px;
 }
 
 input[type="color"] {

@@ -145,7 +145,6 @@ class App {
     this.ui.hideStyleControls();
     this.ui.hideCameraStrategyControls();
     this.ui.hideFilenameSuggestion();
-    this.ui.hideCameraInfo();
   }
 
   /**

@@ -14,7 +14,6 @@
   <div id="side-panel">
     <div class="panel-header">
       <h1>GPX 3D Renderer</h1>
-      <button id="panel-toggle">-</button>
     </div>
     <div id="panel-content">
       <div class="control-group">
@@ -83,31 +82,9 @@
         <h4>Suggested Filename</h4>
         <p id="filename-content" style="word-wrap: break-word;"></p>
       </div>
-
-      <div id="camera-info" class="control-group" style="display: none;">
-        <h4>Camera Info</h4>
-        <div id="camera-info-content"></div>
-        <div id="camera-controls" style="margin-top: 10px;">
-          <div class="slider-group">
-            <label for="camera-heading">Heading:</label>
-            <input type="range" id="camera-heading" min="-180" max="180" value="0">
-          </div>
-          <div class="slider-group" style="margin-top: 5px;">
-            <label for="camera-pitch">Pitch:</label>
-            <input type="range" id="camera-pitch" min="-90" max="0" value="-45">
-          </div>
-          <div class="slider-group" style="margin-top: 5px;">
-            <label for="camera-roll">Roll:</label>
-            <input type="range" id="camera-roll" min="-90" max="90" value="0">
-          </div>
-          <div class="number-input-group" style="margin-top: 5px;">
-            <label for="camera-height">Height:</label>
-            <input type="number" id="camera-height" min="50" max="1000" value="200">
-          </div>
-        </div>
-      </div>
     </div>
   </div>
+  <button id="panel-toggle">-</button>
 </div>
 
 <div id="loading-indicator" style="display: none;">

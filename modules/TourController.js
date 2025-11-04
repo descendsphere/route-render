@@ -81,8 +81,6 @@ class TourController {
       stopTime: stopTime,
     };
 
-    document.getElementById('camera-info').style.display = 'block';
-
     this.updateVisuals(); // Set initial visual state
     this._applyCameraStrategy();
   }

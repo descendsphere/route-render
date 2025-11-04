@@ -40,8 +40,6 @@ class UIManager {
     this.cameraStrategyControls = document.getElementById('camera-strategy-controls');
     this.filenameSuggestion = document.getElementById('filename-suggestion');
     this.filenameContent = document.getElementById('filename-content');
-    this.cameraInfo = document.getElementById('camera-info');
-    this.cameraInfoContent = document.getElementById('camera-info-content');
     this.panelContainer = document.getElementById('panel-container'); // New element
     this.sidePanel = document.getElementById('side-panel'); // New element
     this.panelToggleButton = document.getElementById('panel-toggle'); // New element
@@ -152,23 +150,6 @@ class UIManager {
 
   updateFilenameContent(filename) {
     this.filenameContent.textContent = filename;
-  }
-
-  showCameraInfo() {
-    this.cameraInfo.style.display = 'block';
-  }
-
-  hideCameraInfo() {
-    this.cameraInfo.style.display = 'none';
-  }
-
-  updateCameraInfoContent(info) {
-    this.cameraInfoContent.innerHTML = `
-      <p>Heading: ${info.heading.toFixed(2)}</p>
-      <p>Pitch: ${info.pitch.toFixed(2)}</p>
-      <p>Roll: ${info.roll.toFixed(2)}</p>
-      <p>Height: ${info.height.toFixed(2)} m</p>
-    `;
   }
 
   updateSpeedDisplay(relativeSpeed) {
