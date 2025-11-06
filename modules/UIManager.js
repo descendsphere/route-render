@@ -46,7 +46,8 @@ class UIManager {
     this.filenameContent = document.getElementById('filename-content');
     this.panelContainer = document.getElementById('panel-container'); // New element
     this.sidePanel = document.getElementById('side-panel'); // New element
-    this.panelToggleButton = document.getElementById('panel-toggle'); // New element
+    this.panelHeader = document.querySelector('.panel-header');
+    this.panelToggleButton = document.getElementById('panel-toggle-icon'); // New element
   }
 
   /**
@@ -56,21 +57,19 @@ class UIManager {
     logger.info('Initializing UI event listeners.');
 
     // Prevent Cesium from interfering with UI mouse events
-    this.sidePanel.addEventListener('mousedown', () => {
-      this.viewer.scene.screenSpaceCameraController.enableInputs = false;
+    this.sidePanel.addEventListener('mousedown', (event) => {
+      // Allow clicks on the header to pass through
+      if (!this.panelHeader.contains(event.target)) {
+        this.viewer.scene.screenSpaceCameraController.enableInputs = false;
+      }
     });
     window.addEventListener('mouseup', () => {
       this.viewer.scene.screenSpaceCameraController.enableInputs = true;
     });
 
     // Panel toggle functionality
-    this.panelToggleButton.addEventListener('click', () => {
+    this.panelHeader.addEventListener('click', () => {
       this.sidePanel.classList.toggle('collapsed');
-      if (this.sidePanel.classList.contains('collapsed')) {
-        this.panelToggleButton.textContent = '+';
-      } else {
-        this.panelToggleButton.textContent = '-';
-      }
     });
 
     this.gpxFileInput.addEventListener('change', (event) => this.onFileSelected(event.target.files[0]));

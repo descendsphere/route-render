@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GPX 3D Route Renderer</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <link href="style.css" rel="stylesheet">
 </head>
@@ -14,6 +16,7 @@
   <div id="side-panel">
     <div class="panel-header">
       <h1>GPX 3D Renderer</h1>
+      <span id="panel-toggle-icon" class="toggle-icon">▾</span>
     </div>
     <div id="panel-content">
       <div class="control-group">
@@ -98,7 +101,6 @@
       </div>
     </div>
   </div>
-  <button id="panel-toggle">-</button>
 </div>
 
 <div id="loading-indicator" style="display: none;">

@@ -74,6 +74,11 @@ class App {
         }
       }
     });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      this.viewer.resize();
+    });
   }
 
   /**
@@ -84,15 +89,32 @@ class App {
     // Note: Using a default access token for Cesium Ion. For a production app, you should create your own token.
     Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1Njg3Zjk2Yy02ZjM4LTRkM2QtYjY4MC1kN2ZkNWU4N2M3NjYiLCJpZCI6MzU1Mzk4LCJpYXQiOjE3NjIxNzc1OTR9.bWw5GgYYaFW-JZ2AJr6GHBEZq4tohQF8qea5FJ7eaao';
 
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+    const terrainProvider = Cesium.Terrain.fromWorldTerrain({
+      requestWaterMask: !isMobile, // Disable water mask on mobile for performance
+      requestVertexNormals: !isMobile, // Disable lighting on mobile for performance
+    });
+
     this.viewer = new Cesium.Viewer('cesiumContainer', {
-      terrain: Cesium.Terrain.fromWorldTerrain(),
-      //terrainProvider: Cesium.createWorldTerrain(),
+      terrain: terrainProvider,
       contextOptions: {
         webgl: {
 		  willReadFrequently: true
         }
       },
     });
+
+    // Handle high DPI displays
+    if (isMobile) {
+      this.viewer.resolutionScale = window.devicePixelRatio;
+      // Mobile-specific performance and usability adjustments
+      this.viewer.scene.screenSpaceCameraController.enableCollisionDetection = false;
+      this.viewer.scene.screenSpaceCameraController.zoomEventTypes = [Cesium.CameraEventType.PINCH];
+    } else {
+      this.viewer.resolutionScale = Math.min(window.devicePixelRatio, 1.5);
+    }
+
     this.viewer.camera.flyTo({
       destination : Cesium.Cartesian3.fromDegrees(114.109, 22.0, 90000),
       orientation : {
