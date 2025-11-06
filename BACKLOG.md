@@ -41,3 +41,5 @@ This file contains a list of proposed features, enhancements, and bug fixes for 
 - **[FIXED] Remove Camera Info Section:** The "Camera Info" section has been removed from the UI as it provides debug information that is not useful to the end-user.
 - **[FIXED] Concise Style Controls:** Redesigned the "Style" section to be more compact. Placed the route width control to the right of the color picker and implemented `+`/`-` buttons for changing the width value.
 - **[FIXED] Local Time Display:** Changed the "Person" entity's label to display the current tour time in the user's local time zone instead of UTC.
+- **[FIXED] Vertical Quick Controls:** Implemented a vertical quick-controls bar on the left of the screen, which appears when the main panel is collapsed. This bar contains vertical sliders for speed and zoom, allowing for easier adjustments on mobile without obscuring the map.
+- **[FIXED] Mobile UI Refinements:** The Cesium animation and timeline widgets are now larger and have been moved upward on mobile screens to provide a better user experience and avoid conflicts with OS gestures.

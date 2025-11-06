@@ -51,6 +51,9 @@ class UIManager {
     this.sidePanel = document.getElementById('side-panel'); // New element
     this.panelHeader = document.querySelector('.panel-header');
     this.panelToggleButton = document.getElementById('panel-toggle-icon'); // New element
+    this.quickControlsContainer = document.getElementById('quick-controls-container');
+    this.speedSliderGroup = this.speedSlider.parentElement;
+    this.distanceSliderGroup = this.cameraDistanceSlider.parentElement;
   }
 
   /**
@@ -73,6 +76,23 @@ class UIManager {
     // Panel toggle functionality
     this.panelHeader.addEventListener('click', () => {
       this.sidePanel.classList.toggle('collapsed');
+      if (this.sidePanel.classList.contains('collapsed')) {
+        // Move sliders to quick controls and add vertical class
+        this.speedSliderGroup.classList.add('vertical-slider');
+        this.distanceSliderGroup.classList.add('vertical-slider');
+        this.speedSliderGroup.querySelector('label').textContent = 'S:';
+        this.distanceSliderGroup.querySelector('label').textContent = 'Z:';
+        this.quickControlsContainer.appendChild(this.speedSliderGroup);
+        this.quickControlsContainer.appendChild(this.distanceSliderGroup);
+      } else {
+        // Move sliders back to main panel and restore labels
+        this.speedSliderGroup.classList.remove('vertical-slider');
+        this.distanceSliderGroup.classList.remove('vertical-slider');
+        this.speedSliderGroup.querySelector('label').textContent = 'Speed:';
+        this.distanceSliderGroup.querySelector('label').textContent = 'Zoom:';
+        this.tourControls.appendChild(this.speedSliderGroup);
+        this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+      }
     });
 
     this.gpxFileInput.addEventListener('change', (event) => this.onFileSelected(event.target.files[0]));
@@ -132,7 +152,7 @@ class UIManager {
     });
 
     this.cameraDistanceSlider.addEventListener('input', (event) => {
-      const position = parseInt(event.target.value, 10);
+      const position = 100 - parseInt(event.target.value, 10); // Reverse the position
       const distance = this._logValue(position, 50, 20000);
       this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
       this.onUpdateCameraDistance(distance);
@@ -170,10 +190,12 @@ class UIManager {
 
   showTourControls() {
     this.tourControls.style.display = 'block';
+    this.quickControlsContainer.classList.add('active');
   }
 
   hideTourControls() {
     this.tourControls.style.display = 'none';
+    this.quickControlsContainer.classList.remove('active');
   }
 
   showRouteStats() {
@@ -248,7 +270,7 @@ class UIManager {
   }
 
   getCameraDistance() {
-    const position = parseInt(this.cameraDistanceSlider.value, 10);
+    const position = 100 - parseInt(this.cameraDistanceSlider.value, 10); // Reverse the position
     return this._logValue(position, 50, 20000);
   }
 }

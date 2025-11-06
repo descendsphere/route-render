@@ -52,6 +52,7 @@ The application is architected in a modular fashion, with distinct components re
     *   Holds references to all interactive DOM elements.
     *   Initializes all UI event listeners. The panel is made collapsible by adding a click listener to the `.panel-header` element, which toggles a `.collapsed` class on the main `#side-panel`.
     *   Handles the conversion of linear slider positions (0-100) to logarithmic values for controls like speed and camera distance, providing a more intuitive user experience.
+    *   Manages a separate, vertical quick-controls container that appears when the main panel is collapsed. It dynamically moves the slider controls between the main panel and the quick-controls container, and adjusts their appearance (e.g., abbreviating labels, changing orientation) for the context.
     *   Provides public methods for the `App` controller to update the UI (e.g., `updateStatsContent`, `showLoadingIndicator`).
     *   Provides public getter methods for the `App` controller to retrieve UI state (e.g., `getRouteColor`).
     *   Fires callbacks to notify the `App` controller of user actions.
