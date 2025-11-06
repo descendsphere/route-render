@@ -21,7 +21,8 @@ This file contains a list of proposed features, enhancements, and bug fixes for 
 
 ## Medium Priority UI/UX
 
-- **[FEATURE] Global Camera Distance:** Add a "Distance" slider that adjusts the camera distance for all applicable camera strategies (Top-Down, Overhead, First-Person), not just one.
+- **[FIXED] Global Camera Distance:** Added a "Distance" slider that adjusts the camera distance for all applicable camera strategies (Top-Down, Overhead, First-Person), not just one.
+- **[FIXED] Logarithmic Sliders:** Implemented a logarithmic scale for both the speed and camera distance sliders to provide better precision for smaller values.
 - **[REFACTOR] Consistent POI/Waypoint Labels:** Update the styling (font, background, color, offset) of POI and Waypoint labels to match the "Person" entity's label for a consistent look.
 
 ## Core Functionality Enhancements

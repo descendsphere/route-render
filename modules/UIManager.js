@@ -16,6 +16,7 @@ class UIManager {
     this.onSetCameraStrategy = () => {};
     this.onUpdatePersonStyle = () => {};
     this.onToggleClampToGround = () => {};
+    this.onUpdateCameraDistance = () => {};
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
@@ -34,6 +35,8 @@ class UIManager {
     this.personSizeDisplay = document.getElementById('person-size-display');
     this.personSizeIncrement = document.getElementById('person-size-increment');
     this.cameraStrategyInput = document.getElementById('camera-strategy');
+    this.cameraDistanceSlider = document.getElementById('camera-distance');
+    this.cameraDistanceDisplay = document.getElementById('camera-distance-display');
     this.clampToGroundInput = document.getElementById('clamp-to-ground');
 
     this.loadingIndicator = document.getElementById('loading-indicator');
@@ -80,7 +83,8 @@ class UIManager {
     this.resetStyleButton.addEventListener('click', () => this.onResetStyle()); // New listener
 
     this.speedSlider.addEventListener('input', (event) => {
-      const relativeSpeed = parseFloat(event.target.value);
+      const position = parseInt(event.target.value, 10);
+      const relativeSpeed = this._logValue(position, 0.125, 8);
       this.onSetSpeed(relativeSpeed);
       this.updateSpeedDisplay(relativeSpeed);
     });
@@ -127,7 +131,33 @@ class UIManager {
       }
     });
 
+    this.cameraDistanceSlider.addEventListener('input', (event) => {
+      const position = parseInt(event.target.value, 10);
+      const distance = this._logValue(position, 50, 20000);
+      this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
+      this.onUpdateCameraDistance(distance);
+    });
+
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
+  }
+
+  // --- Helper methods for logarithmic slider ---
+  _logValue(position, min, max) {
+    const minp = 0;
+    const maxp = 100;
+    const minv = Math.log(min);
+    const maxv = Math.log(max);
+    const scale = (maxv - minv) / (maxp - minp);
+    return Math.exp(minv + scale * (position - minp));
+  }
+
+  _logPosition(value, min, max) {
+    const minp = 0;
+    const maxp = 100;
+    const minv = Math.log(min);
+    const maxv = Math.log(max);
+    const scale = (maxv - minv) / (maxp - minp);
+    return minp + (Math.log(value) - minv) / scale;
   }
 
   showLoadingIndicator() {
@@ -215,6 +245,11 @@ class UIManager {
 
   getCameraStrategy() {
     return this.cameraStrategyInput.value;
+  }
+
+  getCameraDistance() {
+    const position = parseInt(this.cameraDistanceSlider.value, 10);
+    return this._logValue(position, 50, 20000);
   }
 }
 

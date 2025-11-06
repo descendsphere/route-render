@@ -38,7 +38,7 @@ html, body, #cesiumContainer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2%;
+  padding: 3%;
   cursor: pointer;
   height: 45px; /* Fixed height */
   box-sizing: border-box;
@@ -54,7 +54,7 @@ html, body, #cesiumContainer {
 }
 
 #panel-content {
-  padding: 2%;
+  padding: 3%;
   border-top: 1px solid #444;
   overflow-y: auto; /* Allow vertical scrolling */
 }
@@ -64,7 +64,7 @@ html, body, #cesiumContainer {
 }
 
 .toggle-icon {
-  font-size: 40px; /* Larger icon for all media */
+  font-size: 40px; /* Set toggle icon font size to 40px */
   transition: transform 0.3s ease-in-out;
 }
 
@@ -120,18 +120,19 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 40px;
+  width: 60px; /* Wider label */
 }
 
 .slider-group input[type="range"] {
   flex-grow: 1;
   margin-bottom: 0;
+  max-width: 130px; /* Narrower slider */
 }
 
 .slider-group span {
   flex-shrink: 0;
   margin-left: 10px;
-  width: 40px;
+  width: 50px; /* Adjusted width for display */
   text-align: right;
 }
 
@@ -146,7 +147,7 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 40px;
+  width: 40px; /* Set label width to 40px */
 }
 
 .number-input-group input[type="number"] {
@@ -165,7 +166,7 @@ input[type="file"], input[type="number"], select {
   flex-shrink: 0;
   margin-right: 10px;
   margin-bottom: 0;
-  width: 40px;
+  width: 40px; /* Set label width to 40px */
 }
 
 input[type="color"] {

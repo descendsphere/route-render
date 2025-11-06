@@ -33,7 +33,7 @@
         </div>
         <div class="slider-group">
           <label for="tour-speed">Speed:</label>
-          <input type="range" id="tour-speed" min="0.25" max="8" step="0.25" value="1">
+          <input type="range" id="tour-speed" min="0" max="100" step="1" value="50">
           <span id="speed-display">1.00x</span>
         </div>
       </div>
@@ -46,6 +46,11 @@
           <option value="first-person">First-Person</option>
           <option value="overhead" selected>Overhead</option>
         </select>
+        <div class="slider-group">
+          <label for="camera-distance">Distance:</label>
+          <input type="range" id="camera-distance" min="0" max="100" step="1" value="50">
+          <span id="camera-distance-display">1000m</span>
+        </div>
       </div>
 
       <div id="style-controls" class="control-group" style="display: none;">

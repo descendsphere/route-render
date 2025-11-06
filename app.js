@@ -44,6 +44,7 @@ class App {
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
     this.ui.onSetCameraStrategy = (strategy) => this.tourController.setCameraStrategy(strategy);
     this.ui.onUpdatePersonStyle = (style) => this.person.updateStyle(style);
+    this.ui.onUpdateCameraDistance = (distance) => this.tourController.setCameraDistance(distance);
     this.ui.onToggleClampToGround = () => {
       if (this.currentPoints.length > 0) {
         this.updateRouteStyle();
@@ -443,7 +444,8 @@ class App {
     this.ui.personColorInput.value = '#FFA500';
     this.ui.personSizeDisplay.textContent = 1;
     this.ui.cameraStrategyInput.value = 'overhead';
-    this.ui.speedSlider.value = 1;
+    this.ui.speedSlider.value = this.ui._logPosition(1, 0.125, 8);
+    this.ui.cameraDistanceSlider.value = this.ui._logPosition(1000, 50, 20000);
 
     // Programmatically trigger events to apply the changes
     this.ui.routeColorInput.dispatchEvent(new Event('input'));
@@ -453,6 +455,7 @@ class App {
     this.ui.onUpdatePersonStyle({ size: 1 }); // Directly call the update method
     this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
     this.ui.speedSlider.dispatchEvent(new Event('input'));
+    this.ui.cameraDistanceSlider.dispatchEvent(new Event('input'));
   }
 }
 

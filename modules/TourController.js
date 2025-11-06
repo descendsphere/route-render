@@ -8,6 +8,7 @@ class TourController {
     this.tour = null;
     this.speedController = new SpeedController(this.viewer.clock); // New SpeedController instance
     this.cameraStrategy = 'overhead'; // Default strategy
+    this.cameraDistance = 1000; // Default distance
     this.cameraListeners = {}; // To hold references to listeners
 
     this.cameraStrategies = {
@@ -161,9 +162,23 @@ class TourController {
    */
   _activateTrackedCamera() {
     this._cleanupCamera();
-    this.viewer.trackedEntity = this.person.entity;
-    // Zoom to all entities to see the whole route initially
-    this.viewer.zoomTo(this.viewer.entities);
+    const listener = (clock) => {
+      if (!this.tour) return; // Do nothing if no tour is active
+      const currentPos = this.person.entity.position.getValue(clock.currentTime);
+      if (!Cesium.defined(currentPos)) return;
+
+      const pitch = Cesium.Math.toRadians(-30);
+      const heading = this.viewer.camera.heading; // Keep the current heading
+      const range = this.cameraDistance;
+
+      this.viewer.camera.lookAt(
+        currentPos,
+        new Cesium.HeadingPitchRange(heading, pitch, range)
+      );
+    };
+
+    this.viewer.clock.onTick.addEventListener(listener);
+    this.cameraListeners['third-person'] = () => this.viewer.clock.onTick.removeEventListener(listener);
   }
 
   /**
@@ -175,7 +190,7 @@ class TourController {
     const cameraPosition = Cesium.Cartesian3.fromDegrees(
       Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).longitude),
       Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).latitude),
-      this.maxRouteElevation + 2000 // 2km above max elevation
+      this.maxRouteElevation + this.cameraDistance // Use the new distance property
     );
 
     this.viewer.camera.setView({
@@ -209,7 +224,7 @@ class TourController {
       const offset = new Cesium.HeadingPitchRange(
         0, // Straight ahead
         Cesium.Math.toRadians(-25), // Pitch down 25 degrees
-        50 // 50 meters away from the person
+        this.cameraDistance // Use the new distance property
       );
 
       this.viewer.camera.lookAtTransform(transform, offset);
@@ -238,7 +253,7 @@ class TourController {
       // Calculate heading to complete one 360-degree rotation over the tour duration
       const heading = Cesium.Math.toRadians(tourProgress * 360);
       const pitch = Cesium.Math.toRadians(-35); // look down at ~35°
-      const range = 1000; // stay 1km away
+      const range = this.cameraDistance; // Use the new distance property
 
       this.viewer.camera.lookAt(
         currentPos,
@@ -299,6 +314,14 @@ class TourController {
   setCameraStrategy(strategy) {
     this.cameraStrategy = strategy;
     this._applyCameraStrategy();
+  }
+
+  setCameraDistance(distance) {
+    this.cameraDistance = distance;
+    // If a tour is active, re-apply the current strategy to update the distance
+    if (this.tour) {
+      this._applyCameraStrategy();
+    }
   }
 }
 
