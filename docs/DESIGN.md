@@ -24,6 +24,17 @@ The application relies on several external APIs:
 *   **Points of Interest (POI):** The **OpenStreetMap Overpass API** is queried to find relevant POIs near the loaded route.
 *   **Reverse Geocoding:** A free, public reverse geocoding service (Nominatim) is used to convert the start and end coordinates of the route into human-readable location names for the filename suggestion.
 
+### 2.3. Mobile Responsiveness
+
+The application is designed to be mobile-friendly using a combination of HTML, CSS, and JavaScript techniques:
+
+*   **Viewport Meta Tag:** A `<meta name="viewport">` tag is used in `index.html` to ensure the page is scaled correctly on mobile devices.
+*   **CSS Media Queries:** The `style.css` file contains `@media` queries to adjust the layout for smaller screens. This includes making the side panel full-width and increasing the size of touch targets.
+*   **JavaScript Optimizations:** The `app.js` module detects if the user is on a mobile device and applies several optimizations:
+    *   `viewer.resolutionScale` is set to `window.devicePixelRatio` to ensure a sharp, non-blurry rendering on high-DPI screens.
+    *   Expensive terrain features (`requestWaterMask`, `requestVertexNormals`) are disabled to improve performance.
+    *   Camera zoom controls are limited to pinch gestures for better touch interaction.
+
 ## 3. Component Design
 
 The application is architected in a modular fashion, with distinct components responsible for specific functionalities.
@@ -36,10 +47,10 @@ The application is architected in a modular fashion, with distinct components re
     *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers.
 
 ### 3.2. `UIManager`
-*   **Description:** Manages all interactions with the DOM.
+*   **Description:** Manages all interactions with the DOM, including the collapsible side panel.
 *   **Responsibilities:**
     *   Holds references to all interactive DOM elements.
-    *   Initializes all UI event listeners (file input, buttons, sliders).
+    *   Initializes all UI event listeners. The panel is made collapsible by adding a click listener to the `.panel-header` element, which toggles a `.collapsed` class on the main `#side-panel`.
     *   Provides public methods for the `App` controller to update the UI (e.g., `updateStatsContent`, `showLoadingIndicator`).
     *   Provides public getter methods for the `App` controller to retrieve UI state (e.g., `getRouteColor`).
     *   Fires callbacks to notify the `App` controller of user actions.
