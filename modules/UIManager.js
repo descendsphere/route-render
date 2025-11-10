@@ -23,6 +23,7 @@ class UIManager {
     this.onCustomScrub = () => {};
     this.onCustomZoom = () => {};
     this.onCustomResetStyle = () => {};
+    this.onTogglePoiVisibility = () => {}; // New callback
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
@@ -70,6 +71,7 @@ class UIManager {
     this.customResetBtn = document.getElementById('custom-reset-btn');
     this.customZoomBtn = document.getElementById('custom-zoom-btn');
     this.customResetStyleBtn = document.getElementById('custom-reset-style-btn');
+    this.customPoiToggleBtn = document.getElementById('custom-poi-toggle-btn'); // New element
   }
 
   /**
@@ -169,6 +171,7 @@ class UIManager {
     this.customResetBtn.addEventListener('click', () => this.onCustomReset());
     this.customZoomBtn.addEventListener('click', () => this.onCustomZoom());
     this.customResetStyleBtn.addEventListener('click', () => this.onCustomResetStyle());
+    this.customPoiToggleBtn.addEventListener('click', () => this.onTogglePoiVisibility()); // New listener
     this.timeScrubber.addEventListener('input', (event) => {
       const percentage = parseInt(event.target.value, 10) / 1000;
       this.onCustomScrub(percentage);
@@ -195,8 +198,6 @@ class UIManager {
   }
 
   updateUIForState(state) {
-    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-
     // Hide everything by default
     this.loadingIndicator.style.display = 'none';
     this.tourControls.style.display = 'none';
@@ -217,24 +218,18 @@ class UIManager {
       this.cameraStrategyControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      if (isMobile) {
-        this.customTourControls.style.display = 'flex';
-        this.setPlayPauseButtonState(false);
-      } else {
-        this.tourControls.style.display = 'block';
-      }
+      this.customTourControls.style.display = 'flex'; // Always show custom controls
+      this.setPlayPauseButtonState(false);
+      this.tourControls.style.display = 'none'; // Hide old desktop controls
     } else if (state === 'TOUR_PLAYING') {
       this.routeStats.style.display = 'block';
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      if (isMobile) {
-        this.customTourControls.style.display = 'flex';
-        this.setPlayPauseButtonState(true);
-      } else {
-        this.tourControls.style.display = 'block';
-      }
+      this.customTourControls.style.display = 'flex'; // Always show custom controls
+      this.setPlayPauseButtonState(true);
+      this.tourControls.style.display = 'none'; // Hide old desktop controls
     }
   }
 
@@ -305,6 +300,14 @@ class UIManager {
       this.customRewindBtn.classList.add('is-forward');
     } else {
       this.customRewindBtn.classList.remove('is-forward');
+    }
+  }
+
+  setPoiButtonState(isVisible) {
+    if (isVisible) {
+      this.customPoiToggleBtn.classList.add('is-visible');
+    } else {
+      this.customPoiToggleBtn.classList.remove('is-visible');
     }
   }
 

@@ -16,6 +16,8 @@ class App {
     this.person = null;
     this.ui = null; // New UIManager instance
     this.state = 'NO_ROUTE'; // Initial state
+    this.poiEntities = []; // To store Cesium entities for POIs
+    this.poisAreVisible = true; // Initial state for POI visibility
   }
 
   /**
@@ -149,6 +151,7 @@ class App {
     };
     this.ui.onCustomZoom = () => this.zoomToRoute();
     this.ui.onCustomResetStyle = () => this.handleResetStyle();
+    this.ui.onTogglePoiVisibility = () => this.togglePoiVisibility(); // New listener
 
     // Tour controller tick callback
     this.tourController.onTick = ({ percentage, currentTime }) => {
@@ -158,6 +161,7 @@ class App {
 
     this.ui.init(); // Initialize UI event listeners
     this.setState('NO_ROUTE'); // Set initial state
+    this.ui.setPoiButtonState(this.poisAreVisible); // Set initial POI button state
 
     // Add a listener to sync our state with the Cesium clock
     this.viewer.scene.postRender.addEventListener(() => {
@@ -189,6 +193,18 @@ class App {
   }
 
   /**
+   * Toggles the visibility of all POI entities.
+   */
+  togglePoiVisibility() {
+    this.poisAreVisible = !this.poisAreVisible;
+    this.poiEntities.forEach(entity => {
+      if (entity.billboard) entity.billboard.show = this.poisAreVisible;
+      if (entity.label) entity.label.show = this.poisAreVisible;
+    });
+    this.ui.setPoiButtonState(this.poisAreVisible);
+  }
+
+  /**
    * Initializes the Cesium viewer.
    */
   initCesium() {
@@ -205,8 +221,8 @@ class App {
 
     this.viewer = new Cesium.Viewer('cesiumContainer', {
       terrain: terrainProvider,
-      animation: !isMobile, // Disable on mobile
-      timeline: !isMobile, // Disable on mobile
+      animation: false, // Always use custom animation controls
+      timeline: false, // Always use custom timeline controls
       contextOptions: {
         webgl: {
 		  willReadFrequently: true
@@ -266,6 +282,8 @@ class App {
     // Remove all entities that have our custom gpxEntity flag
     const entitiesToRemove = this.viewer.entities.values.filter(entity => entity.gpxEntity);
     entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
+    this.poiEntities = []; // Clear our stored POI entities
+    PoiService.clearPoiData(); // Clear POI data from service
 
     this.currentPoints = [];
     this.setState('NO_ROUTE');
@@ -413,9 +431,16 @@ class App {
    * @param {Array<object>} points - An array of points with lon and lat properties.
    */
   async fetchAndRenderPois(points) {
-    const pois = await PoiService.fetchPois(points);
+    // Fetch POI data from PoiService
+    await PoiService.fetchPois(points);
+    const pois = PoiService.poiData;
+
+    // Clear any existing POI entities before rendering new ones
+    this.poiEntities.forEach(entity => this.viewer.entities.remove(entity));
+    this.poiEntities = [];
+
     pois.forEach(poi => {
-      this.viewer.entities.add({
+      const poiEntity = this.viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 300),
         description: poi.name,
         gpxEntity: true, // Flag for cleanup
@@ -424,16 +449,20 @@ class App {
           color: Cesium.Color.BLUE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           clampToGround: true,
+          show: this.poisAreVisible, // Initial visibility
         },
         label: {
           text: poi.name,
           font: '12pt sans-serif',
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -50),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          show: this.poisAreVisible, // Initial visibility
         },
       });
+      this.poiEntities.push(poiEntity); // Store the entity
     });
+    this.ui.setPoiButtonState(this.poisAreVisible); // Update button state
   }
 
   /**

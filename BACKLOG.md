@@ -28,10 +28,8 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ## UI/UX Enhancements
 
-- **[UI/UX] Auto-Collapse Panel on Play:** When the tour starts, automatically collapse the side panel.
 - **[FEATURE] Manual Pitch Control:** Add controls to adjust the camera pitch during the tour.
 - **[UI/UX] Preset Speed/Zoom Buttons:** As an alternative to sliders, offer preset buttons for speed and zoom levels.
-- **[UI/UX] POI Display Controls:** Add a toggle and a radius slider to control POI visibility.
 
 ## Interactive Elevation Chart
 
@@ -49,11 +47,13 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
-- **[UI/UX] Auto-Collapse Panel on Play:** When the tour starts, the side panel now automatically collapses for a full-screen view.
+- **[FEATURE] Page Title Update:** Changed the application title to "GPX 3D Player" for better branding.
+- **[UI/UX] POI Visibility Toggle:** Added a button to the custom tour controls to toggle the visibility of Points of Interest.
 - **[FIX] Robust POI Naming:** The `PoiService` now uses a comprehensive fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to significantly reduce the number of "Unnamed" POIs.
+- **[FIX] Camera State Lockout & Improved State Transitions:** Resolved critical state management issues that led to camera "lockout" and unpredictable behavior during tour playback and style resets.
+- **[UI/UX] Auto-Collapse Panel on Play:** When the tour starts, the side panel now automatically collapses for a full-screen view.
 - **[REFACTOR] State Machine Architecture:** Refactored the entire application to be driven by a formal state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) in `app.js`. This resolved numerous UI consistency bugs.
-- **[FEATURE] Professional UI Overhaul:** Replaced all emoji-based text buttons with high-quality, consistent SVG icons. Styled all buttons, sliders, and controls for a cohesive, modern, and professional look and feel.
-- **[FEATURE] Custom Tour Controls:** Implemented a custom, touch-friendly tour control bar for mobile devices, replacing the default Cesium widgets. This includes Play/Pause, Direction Toggle, Reset, Zoom to Route, and Reset Style buttons, as well as a high-granularity time scrubber.
+- **[FEATURE] Universal Custom Tour Controls:** The custom, touch-friendly tour control bar (including Play/Pause, Direction Toggle, Reset, Zoom to Route, Reset Style buttons, and a high-granularity time scrubber) is now used universally on both mobile and desktop, replacing the default Cesium widgets.
 - **[FIXED] Vertical Quick Controls:** Implemented a vertical quick-controls bar on the left of the screen, which appears when the main panel is collapsed. This bar contains vertical sliders with icons for speed and zoom.
 - **[FIXED] Integrated Panel Toggle:** Reworked the collapsible panel so the entire header is clickable to toggle, and an icon rotates to indicate state.
 - **[FIXED] Global Camera Distance:** Added a "Distance" slider that adjusts the camera distance for all applicable camera strategies.

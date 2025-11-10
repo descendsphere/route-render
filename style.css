@@ -169,7 +169,7 @@ html, body, #cesiumContainer {
   background-color: rgba(20, 20, 20, 0.7);
   border-radius: 10px;
   padding: 8px;
-  display: flex;
+  display: none; /* Hidden by default */
   flex-direction: column;
   gap: 8px;
   backdrop-filter: blur(5px);
@@ -248,6 +248,20 @@ html, body, #cesiumContainer {
   display: inline-block;
 }
 
+/* POI Toggle state styling */
+#custom-poi-toggle-btn.is-visible .icon-eye-off {
+  display: none;
+}
+#custom-poi-toggle-btn.is-visible .icon-eye {
+  display: inline-block;
+}
+#custom-poi-toggle-btn:not(.is-visible) .icon-eye-off {
+  display: inline-block;
+}
+#custom-poi-toggle-btn:not(.is-visible) .icon-eye {
+  display: none;
+}
+
 .time-display {
   color: white;
   font-size: 14px;
@@ -281,13 +295,6 @@ html, body, #cesiumContainer {
 .control-btn:active {
   background: #45a049;
   transform: scale(0.95);
-}
-
-/* Hide on desktop */
-@media (min-width: 769px) {
-  #custom-tour-controls {
-    display: none !important; /* Use important to override JS */
-  }
 }
 
 /* --- End Custom Tour Controls --- */

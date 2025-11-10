@@ -13,11 +13,12 @@ This project is a web-based application for visualizing GPX track data in a rich
 ## Key Features
 
 *   **State Machine Architecture:** The application is driven by a robust state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) for predictable and stable UI behavior.
-*   **Mobile-First Custom Tour Controls:** On mobile devices, a custom control bar provides a professional, touch-friendly experience with SVG icons, including:
+*   **Mobile-First Custom Tour Controls:** A custom control bar provides a professional, touch-friendly experience with SVG icons, including:
     *   Play/Pause and Reset.
     *   Direction toggle (Forward/Reverse playback).
     *   A full-width, high-granularity time scrubber.
     *   "Zoom to Route" and "Reset Style" functions.
+    *   **POI Visibility Toggle:** A dedicated button to show or hide Points of Interest on the map.
 *   **Collapsible UI & Quick Controls:** The main side panel can be collapsed into a narrow bar containing vertical sliders for quick, on-the-fly adjustments to speed and zoom without obscuring the view.
 *   **3D Route Visualization:** Renders GPX tracks on a high-resolution 3D globe with real-world terrain.
 *   **Cinematic Tour:** Provides an automated fly-through of the route with multiple, dynamically switchable camera perspectives:

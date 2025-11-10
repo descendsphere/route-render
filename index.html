@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GPX 3D Route Renderer</title>
+  <title>GPX 3D Player</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <link href="style.css" rel="stylesheet">
@@ -121,7 +121,7 @@
   <p>Loading...</p>
 </div>
 
-<div id="custom-tour-controls" style="display: none;">
+<div id="custom-tour-controls">
   <div class="scrubber-row">
     <div class="time-display" id="custom-time-display">00:00:00</div>
     <input type="range" id="custom-time-scrubber" min="0" max="1000" value="0" step="1" class="time-scrubber">
@@ -143,6 +143,10 @@
     </button>
     <button id="custom-reset-style-btn" title="Reset Style">
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+    <button id="custom-poi-toggle-btn" title="Toggle POIs">
+      <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.54 18.54 0 0 1 2.21-3.02m4.63-4.63A10.07 10.07 0 0 1 12 4c7 0 11 8 11 8a18.54 18.54 0 0 1-2.21 3.02m-4.63 4.63L12 9a3 3 0 0 0-3-3m-2.07 2.07L12 15a3 3 0 0 0 3 3"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
     </button>
   </div>
 </div>

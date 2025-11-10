@@ -1,6 +1,8 @@
 import logger from './Logger.js';
 
 class PoiService {
+  static _poiData = []; // Static array to store fetched POI data
+
   /**
    * Fetches points of interest (POIs) near a given route.
    * @param {Array<object>} points - An array of points with lon and lat properties.
@@ -8,6 +10,7 @@ class PoiService {
    */
   static async fetchPois(points) {
     if (points.length === 0) {
+      this._poiData = []; // Clear previous data
       return [];
     }
 
@@ -28,7 +31,7 @@ class PoiService {
       const data = await response.json();
       logger.info(`Found ${data.elements.length} POIs.`);
 
-      return data.elements.map(element => {
+      this._poiData = data.elements.map(element => {
         const tags = element.tags;
         const poiName = tags.name || tags['name:en'] || tags.alt_name || tags.old_name || 'Unnamed';
 
@@ -45,10 +48,28 @@ class PoiService {
         }
         return poi;
       });
+      return this._poiData;
     } catch (error) {
       logger.error('Error fetching POIs:', error);
+      this._poiData = []; // Clear data on error
       return [];
     }
+  }
+
+  /**
+   * Clears all stored POI data.
+   */
+  static clearPoiData() {
+    logger.info('Clearing POI data.');
+    this._poiData = [];
+  }
+
+  /**
+   * Returns the currently stored POI data.
+   * @returns {Array<object>} An array of POI data objects.
+   */
+  static get poiData() {
+    return this._poiData;
   }
 
   /**

@@ -60,8 +60,8 @@ The application is designed to be mobile-first.
     *   Holds references to all interactive DOM elements.
     *   Initializes all UI event listeners.
     *   Manages the logic for the collapsible side panel via `collapsePanel()` and `expandPanel()` methods, which are called by the panel's click handler and can be called programmatically (e.g., to auto-collapse on tour start).
-    *   Provides a single `updateUIForState(state)` method that shows/hides all relevant UI sections based on the current application state.
-    *   Provides methods to update the state of custom controls (e.g., `setPlayPauseButtonState`) by toggling CSS classes, which in turn control the visibility of different SVG icons.
+    *   Provides a single `updateUIForState(state)` method that shows/hides all relevant UI sections based on the current application state. This method now ensures the custom tour controls are always visible when a route is loaded, regardless of device type.
+    *   Provides methods to update the state of custom controls (e.g., `setPlayPauseButtonState`, `setPoiButtonState`) by toggling CSS classes, which in turn control the visibility of different SVG icons.
 
 ### 3.3. `TourController`
 *   **Description:** Manages the logic for preparing and controlling the cinematic tour.
@@ -82,7 +82,7 @@ The application is designed to be mobile-first.
     *   Applies the final calculated speed and direction to the Cesium `Clock` multiplier.
 
 ### 3.5. `Person` & Other Services
-*   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features.
+*   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features. It also manages a static list of fetched POI data (`_poiData`) and provides methods to access and clear this data.
 *   Other components remain as previously designed, providing specific, modular functionalities.
 
 ## 4. Data Flow (State-Driven)
