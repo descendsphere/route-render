@@ -51,6 +51,7 @@ The application is designed to be mobile-first.
     *   Initializes all other components.
     *   Manages the application state via the `setState()` method.
     *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers and state transitions.
+    *   The `handleResetStyle()` method has been corrected to only reset style-related properties, and no longer interferes with camera state, preventing disruptive side effects during tour playback.
     *   Contains the `postRender` listener, which is the single source of truth for updating time-based UI elements (labels, displays) during playback.
 
 ### 3.2. `UIManager`
@@ -68,7 +69,8 @@ The application is designed to be mobile-first.
     *   `prepareTour()`: The main setup method. It populates the `SampledPositionProperty`, configures the Cesium `Clock`, and initializes all listeners. This is called once when a route is loaded. The UI tick listener is now managed independently here to prevent it from being destroyed by camera changes.
     *   `startTour()`: A simple method that begins or resumes animation by setting `viewer.clock.shouldAnimate = true` and re-initializes listeners.
     *   `pauseTour()`: A simple method that pauses animation.
-    *   `stopTour()`: Resets the clock and cleans up all camera and UI listeners, including the now-decoupled UI tick listener.
+    *   `stopTour()`: A critical state transition method. It stops the clock, cleans up all tour-related listeners, and most importantly, explicitly restores the camera to its default interactive state by calling `viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY)`. This prevents camera "lockout" issues.
+    *   `setCameraDistance()`: Now only updates the `cameraDistance` property. The active camera listener is responsible for reading this value on each frame, preventing the need to tear down and rebuild the camera strategy just to change the zoom level.
     *   Manages the selection and application of different camera strategies.
 
 ### 3.4. `SpeedController`

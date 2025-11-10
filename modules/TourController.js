@@ -275,22 +275,30 @@ class TourController {
   }
 
   /**
-   * Stops the cinematic tour.
+   * Stops the cinematic tour and resets the camera to its default interactive state.
    */
   stopTour() {
-    logger.info('Stopping tour.');
+    logger.info('Stopping tour and resetting camera.');
+    // 1. Stop the clock
     if (this.viewer.clock.shouldAnimate) {
       this.viewer.clock.shouldAnimate = false;
     }
+    // 2. Reset the time
     if (this.tour) {
       this.viewer.clock.currentTime = this.tour.startTime.clone();
     }
+    // 3. Clean up all tour-related listeners
     if (this.uiTickListener) {
       this.uiTickListener();
       this.uiTickListener = null;
     }
-    this.speedController.resetDirection(); // Reset direction on stop
-    this._cleanupCamera();
+    this._cleanupCamera(); // This already removes camera listeners
+
+    // 4. Explicitly restore default camera control
+    this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+
+    // 5. Reset speed controller direction
+    this.speedController.resetDirection();
   }
 
   /**
@@ -326,16 +334,15 @@ class TourController {
   }
 
   setCameraStrategy(strategy) {
+    if (strategy === this.cameraStrategy && this.viewer.trackedEntity === undefined) return; // Do nothing if strategy is the same and not tracking
     this.cameraStrategy = strategy;
     this._applyCameraStrategy();
   }
 
   setCameraDistance(distance) {
     this.cameraDistance = distance;
-    // If a tour is active, re-apply the current strategy to update the distance
-    if (this.tour) {
-      this._applyCameraStrategy();
-    }
+    // The active camera strategy listener will automatically pick up this new value on the next frame.
+    // There is no need to re-apply the strategy.
   }
 
   // --- Custom Controls API ---

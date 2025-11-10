@@ -526,7 +526,6 @@ class App {
     this.ui.clampToGroundInput.checked = true;
     this.ui.personColorInput.value = '#FFA500';
     this.ui.personSizeDisplay.textContent = 1;
-    this.ui.cameraStrategyInput.value = 'overhead';
     this.ui.speedSlider.value = this.ui._logPosition(1, 0.125, 8);
     this.ui.cameraDistanceSlider.value = this.ui._logPosition(1000, 50, 20000);
 
@@ -536,7 +535,9 @@ class App {
     this.ui.clampToGroundInput.dispatchEvent(new Event('change'));
     this.ui.personColorInput.dispatchEvent(new Event('input'));
     this.ui.onUpdatePersonStyle({ size: 1 }); // Directly call the update method
-    this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
+    // Do NOT dispatch a change event for the camera, as it's disruptive.
+    // The user can change this manually if they wish.
+    // this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
     this.ui.speedSlider.dispatchEvent(new Event('input'));
     this.ui.cameraDistanceSlider.dispatchEvent(new Event('input'));
   }
