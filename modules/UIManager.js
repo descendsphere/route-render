@@ -17,6 +17,12 @@ class UIManager {
     this.onUpdatePersonStyle = () => {};
     this.onToggleClampToGround = () => {};
     this.onUpdateCameraDistance = () => {};
+    this.onCustomPlayPause = () => {};
+    this.onCustomRewind = () => {};
+    this.onCustomReset = () => {};
+    this.onCustomScrub = () => {};
+    this.onCustomZoom = () => {};
+    this.onCustomResetStyle = () => {};
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
@@ -54,6 +60,16 @@ class UIManager {
     this.quickControlsContainer = document.getElementById('quick-controls-container');
     this.speedSliderGroup = this.speedSlider.parentElement;
     this.distanceSliderGroup = this.cameraDistanceSlider.parentElement;
+
+    // Custom Tour Controls
+    this.customTourControls = document.getElementById('custom-tour-controls');
+    this.timeDisplay = document.getElementById('custom-time-display');
+    this.timeScrubber = document.getElementById('custom-time-scrubber');
+    this.customPlayPauseBtn = document.getElementById('custom-play-pause-btn');
+    this.customRewindBtn = document.getElementById('custom-rewind-btn');
+    this.customResetBtn = document.getElementById('custom-reset-btn');
+    this.customZoomBtn = document.getElementById('custom-zoom-btn');
+    this.customResetStyleBtn = document.getElementById('custom-reset-style-btn');
   }
 
   /**
@@ -80,16 +96,12 @@ class UIManager {
         // Move sliders to quick controls and add vertical class
         this.speedSliderGroup.classList.add('vertical-slider');
         this.distanceSliderGroup.classList.add('vertical-slider');
-        this.speedSliderGroup.querySelector('label').textContent = 'S:';
-        this.distanceSliderGroup.querySelector('label').textContent = 'Z:';
         this.quickControlsContainer.appendChild(this.speedSliderGroup);
         this.quickControlsContainer.appendChild(this.distanceSliderGroup);
       } else {
         // Move sliders back to main panel and restore labels
         this.speedSliderGroup.classList.remove('vertical-slider');
         this.distanceSliderGroup.classList.remove('vertical-slider');
-        this.speedSliderGroup.querySelector('label').textContent = 'Speed:';
-        this.distanceSliderGroup.querySelector('label').textContent = 'Zoom:';
         this.tourControls.appendChild(this.speedSliderGroup);
         this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
       }
@@ -159,6 +171,17 @@ class UIManager {
     });
 
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
+
+    // Custom tour controls listeners
+    this.customPlayPauseBtn.addEventListener('click', () => this.onCustomPlayPause());
+    this.customRewindBtn.addEventListener('click', () => this.onCustomRewind());
+    this.customResetBtn.addEventListener('click', () => this.onCustomReset());
+    this.customZoomBtn.addEventListener('click', () => this.onCustomZoom());
+    this.customResetStyleBtn.addEventListener('click', () => this.onCustomResetStyle());
+    this.timeScrubber.addEventListener('input', (event) => {
+      const percentage = parseInt(event.target.value, 10) / 1000;
+      this.onCustomScrub(percentage);
+    });
   }
 
   // --- Helper methods for logarithmic slider ---
@@ -180,30 +203,48 @@ class UIManager {
     return minp + (Math.log(value) - minv) / scale;
   }
 
-  showLoadingIndicator() {
-    this.loadingIndicator.style.display = 'block';
-  }
+  updateUIForState(state) {
+    const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-  hideLoadingIndicator() {
+    // Hide everything by default
     this.loadingIndicator.style.display = 'none';
-  }
-
-  showTourControls() {
-    this.tourControls.style.display = 'block';
-    this.quickControlsContainer.classList.add('active');
-  }
-
-  hideTourControls() {
     this.tourControls.style.display = 'none';
-    this.quickControlsContainer.classList.remove('active');
-  }
-
-  showRouteStats() {
-    this.routeStats.style.display = 'block';
-  }
-
-  hideRouteStats() {
+    this.customTourControls.style.display = 'none';
     this.routeStats.style.display = 'none';
+    this.styleControls.style.display = 'none';
+    this.cameraStrategyControls.style.display = 'none';
+    this.filenameSuggestion.style.display = 'none';
+    this.quickControlsContainer.classList.remove('active');
+
+    if (state === 'LOADING') {
+      this.loadingIndicator.style.display = 'block';
+    } else if (state === 'NO_ROUTE') {
+      // Only the file input is visible, which is always the case
+    } else if (state === 'ROUTE_LOADED' || state === 'TOUR_PAUSED') {
+      this.routeStats.style.display = 'block';
+      this.styleControls.style.display = 'block';
+      this.cameraStrategyControls.style.display = 'block';
+      this.filenameSuggestion.style.display = 'block';
+      this.quickControlsContainer.classList.add('active');
+      if (isMobile) {
+        this.customTourControls.style.display = 'flex';
+        this.setPlayPauseButtonState(false);
+      } else {
+        this.tourControls.style.display = 'block';
+      }
+    } else if (state === 'TOUR_PLAYING') {
+      this.routeStats.style.display = 'block';
+      this.styleControls.style.display = 'block';
+      this.cameraStrategyControls.style.display = 'block';
+      this.filenameSuggestion.style.display = 'block';
+      this.quickControlsContainer.classList.add('active');
+      if (isMobile) {
+        this.customTourControls.style.display = 'flex';
+        this.setPlayPauseButtonState(true);
+      } else {
+        this.tourControls.style.display = 'block';
+      }
+    }
   }
 
   updateStatsContent(stats) {
@@ -211,30 +252,6 @@ class UIManager {
       <p>Distance: ${stats.distance} km</p>
       <p>Elevation Gain: ${stats.elevationGain} m</p>
     `;
-  }
-
-  showStyleControls() {
-    this.styleControls.style.display = 'block';
-  }
-
-  hideStyleControls() {
-    this.styleControls.style.display = 'none';
-  }
-
-  showCameraStrategyControls() {
-    this.cameraStrategyControls.style.display = 'block';
-  }
-
-  hideCameraStrategyControls() {
-    this.cameraStrategyControls.style.display = 'none';
-  }
-
-  showFilenameSuggestion() {
-    this.filenameSuggestion.style.display = 'block';
-  }
-
-  hideFilenameSuggestion() {
-    this.filenameSuggestion.style.display = 'none';
   }
 
   updateFilenameContent(filename) {
@@ -273,6 +290,33 @@ class UIManager {
     const position = 100 - parseInt(this.cameraDistanceSlider.value, 10); // Reverse the position
     return this._logValue(position, 50, 20000);
   }
+
+  // --- Custom Tour Control Updaters ---
+
+  updateTimeDisplay(timeString) {
+    this.timeDisplay.textContent = timeString;
+  }
+
+  updateScrubber(percentage) {
+    this.timeScrubber.value = percentage * 1000;
+  }
+
+  setPlayPauseButtonState(isPlaying) {
+    if (isPlaying) {
+      this.customPlayPauseBtn.classList.add('is-playing');
+    } else {
+      this.customPlayPauseBtn.classList.remove('is-playing');
+    }
+  }
+
+  setRewindButtonIcon(isForward) {
+    if (isForward) {
+      this.customRewindBtn.classList.add('is-forward');
+    } else {
+      this.customRewindBtn.classList.remove('is-forward');
+    }
+  }
+
 }
 
 export default UIManager;

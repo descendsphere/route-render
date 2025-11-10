@@ -1,6 +1,6 @@
 # Application Backlog
 
-This file contains a list of proposed features, enhancements, and bug fixes for the GPX 3D Renderer application.
+This file contains a list of proposed features and enhancements for the GPX 3D Player application.
 
 ## Epic: Multi-Route Management & Shareability
 
@@ -12,18 +12,6 @@ This file contains a list of proposed features, enhancements, and bug fixes for 
   - **[FEATURE] Remove Local Routes:** Add a "remove" button for routes stored in `localStorage`.
   - **[FEATURE] "No Route" Option:** Always include a "No Route" option at the top of the list, which is the default state.
 - **[FEATURE] Shareable URLs:** Implement logic to read a URL parameter (e.g., `?route=route_id`) to automatically load a specific pre-packaged or locally stored route on page load.
-
-## High Priority UI/UX
-
-- **[FIXED] Mobile Responsiveness:** Used CSS media queries to improve the layout on mobile devices. This includes making the side panel full-width and increasing the size of fonts and touch targets. Also added viewport meta tag and Cesium resolution scaling.
-- **[FEATURE] Custom Tour Controls:** Replace the small default Cesium animation widget with larger, custom-built UI controls (Play/Pause buttons, a progress bar/timeline) for a better mobile experience.
-- **[FIXED] Integrated Panel Toggle:** Reworked the collapsible panel so the entire header is clickable to toggle, and an icon (like a chevron) rotates to indicate state, instead of a separate button.
-
-## Medium Priority UI/UX
-
-- **[FIXED] Global Camera Distance:** Added a "Distance" slider that adjusts the camera distance for all applicable camera strategies (Top-Down, Overhead, First-Person), not just one.
-- **[FIXED] Logarithmic Sliders:** Implemented a logarithmic scale for both the speed and camera distance sliders to provide better precision for smaller values.
-- **[REFACTOR] Consistent POI/Waypoint Labels:** Update the styling (font, background, color, offset) of POI and Waypoint labels to match the "Person" entity's label for a consistent look.
 
 ## Core Functionality Enhancements
 
@@ -37,9 +25,16 @@ This file contains a list of proposed features, enhancements, and bug fixes for 
 
 ### Completed Items
 
+- **[REFACTOR] State Machine Architecture:** Refactored the entire application to be driven by a formal state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) in `app.js`. This resolved numerous UI consistency bugs.
+- **[FEATURE] Professional UI Overhaul:** Replaced all emoji-based text buttons with high-quality, consistent SVG icons. Styled all buttons, sliders, and controls for a cohesive, modern, and professional look and feel.
+- **[FEATURE] Custom Tour Controls:** Implemented a custom, touch-friendly tour control bar for mobile devices, replacing the default Cesium widgets. This includes Play/Pause, Direction Toggle, Reset, Zoom to Route, and Reset Style buttons, as well as a high-granularity time scrubber.
+- **[FIXED] Vertical Quick Controls:** Implemented a vertical quick-controls bar on the left of the screen, which appears when the main panel is collapsed. This bar contains vertical sliders with icons for speed and zoom.
+- **[FIXED] Integrated Panel Toggle:** Reworked the collapsible panel so the entire header is clickable to toggle, and an icon rotates to indicate state.
+- **[FIXED] Global Camera Distance:** Added a "Distance" slider that adjusts the camera distance for all applicable camera strategies.
+- **[FIXED] Logarithmic Sliders:** Implemented a logarithmic scale for both the speed and camera distance sliders to provide better precision for smaller values.
+- **[FIXED] Local Time Display:** Changed the "Person" entity's label to display the current tour time in the user's local time zone (`yyyy-MM-dd HH:mm:ss`) instead of UTC.
+- **[FIXED] Mobile Responsiveness:** Used CSS media queries to improve the layout on mobile devices.
 - **[FIXED] Collapsible Panel:** The side panel's toggle button is now correctly positioned outside the panel, allowing it to be collapsed and expanded.
-- **[FIXED] Remove Camera Info Section:** The "Camera Info" section has been removed from the UI as it provides debug information that is not useful to the end-user.
-- **[FIXED] Concise Style Controls:** Redesigned the "Style" section to be more compact. Placed the route width control to the right of the color picker and implemented `+`/`-` buttons for changing the width value.
-- **[FIXED] Local Time Display:** Changed the "Person" entity's label to display the current tour time in the user's local time zone instead of UTC.
-- **[FIXED] Vertical Quick Controls:** Implemented a vertical quick-controls bar on the left of the screen, which appears when the main panel is collapsed. This bar contains vertical sliders for speed and zoom, allowing for easier adjustments on mobile without obscuring the map.
-- **[FIXED] Mobile UI Refinements:** The Cesium animation and timeline widgets are now larger and have been moved upward on mobile screens to provide a better user experience and avoid conflicts with OS gestures.
+- **[FIXED] Remove Camera Info Section:** The "Camera Info" section has been removed from the UI.
+- **[FIXED] Concise Style Controls:** Redesigned the "Style" section to be more compact and use `+/-` buttons.
+- **[REFACTOR] Consistent POI/Waypoint Labels:** Updated the styling of POI and Waypoint labels.

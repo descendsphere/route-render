@@ -15,6 +15,62 @@ class App {
     this.routeEntity = null;
     this.person = null;
     this.ui = null; // New UIManager instance
+    this.state = 'NO_ROUTE'; // Initial state
+  }
+
+  /**
+   * Sets the application state and triggers all necessary logic and UI updates.
+   * This is the central controller for the application's state machine.
+   * @param {string} newState - The new state.
+   */
+  setState(newState) {
+    if (this.state === newState) return;
+    logger.info(`State change: ${this.state} -> ${newState}`);
+
+    // State Transition Logic
+    if (newState === 'TOUR_PLAYING') {
+      this.tourController.startTour();
+    } else if (newState === 'TOUR_PAUSED') {
+      this.tourController.pauseTour();
+    } else if (newState === 'ROUTE_LOADED') {
+      this.ui.setRewindButtonIcon(true); // Always initialize to forward-facing icon
+      if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
+        this.tourController.stopTour();
+        this.ui.updateScrubber(0);
+        this.ui.setPlayPauseButtonState(false);
+
+        // Manually update time displays to the start time
+        const startTime = this.viewer.clock.startTime;
+        const jsDate = Cesium.JulianDate.toDate(startTime);
+        const year = jsDate.getFullYear();
+        const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = jsDate.getDate().toString().padStart(2, '0');
+        const hours = jsDate.getHours().toString().padStart(2, '0');
+        const minutes = jsDate.getMinutes().toString().padStart(2, '0');
+        const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+        this.ui.updateTimeDisplay(timeString);
+        if (this.person.entity && this.person.entity.label) {
+          this.person.entity.label.text = timeString;
+        }
+      }
+    }
+
+    this.state = newState;
+    this.ui.updateUIForState(this.state);
+  }
+
+  /**
+   * Syncs the internal application state with the state of the Cesium clock.
+   * This is used to detect when the user interacts with the default Cesium widgets.
+   */
+  syncWithClock() {
+    if (this.state === 'TOUR_PLAYING' && !this.viewer.clock.shouldAnimate) {
+      this.setState('TOUR_PAUSED');
+    } else if (this.state === 'TOUR_PAUSED' && this.viewer.clock.shouldAnimate) {
+      this.setState('TOUR_PLAYING');
+    }
   }
 
   /**
@@ -35,10 +91,10 @@ class App {
 
     // Set up UI callbacks
     this.ui.onFileSelected = (file) => this.handleFileSelect(file);
-    this.ui.onPlayTour = () => this.handlePlayTour();
-    this.ui.onStopTour = () => this.tourController.stopTour();
+    this.ui.onPlayTour = () => this.setState('TOUR_PLAYING'); // Desktop play
+    this.ui.onStopTour = () => this.setState('ROUTE_LOADED'); // Desktop stop
     this.ui.onZoomToRoute = () => this.zoomToRoute();
-    this.ui.onResetStyle = () => this.handleResetStyle(); // New callback
+    this.ui.onResetStyle = () => this.handleResetStyle();
     this.ui.onSetSpeed = (relativeSpeed) => this.tourController.setSpeed(relativeSpeed);
     this.ui.onUpdateRouteColor = () => this.updateRouteStyle();
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
@@ -52,15 +108,65 @@ class App {
       }
     };
 
-    this.ui.init(); // Initialize UI event listeners
+    // Custom tour controls callbacks
+    this.ui.onCustomPlayPause = () => {
+      if (this.state === 'TOUR_PLAYING') {
+        this.setState('TOUR_PAUSED');
+      } else {
+        this.setState('TOUR_PLAYING');
+      }
+    };
+    this.ui.onCustomRewind = () => {
+      if (this.state === 'TOUR_PAUSED' || this.state === 'TOUR_PLAYING') {
+        this.tourController.rewind();
+        const isForward = this.tourController.getDirection() === 1;
+        this.ui.setRewindButtonIcon(isForward);
+        // If paused, start playing
+        if (this.state === 'TOUR_PAUSED') {
+          this.setState('TOUR_PLAYING');
+        }
+      }
+    };
+    this.ui.onCustomReset = () => this.setState('ROUTE_LOADED');
+    this.ui.onCustomScrub = (percentage) => {
+      if (this.state === 'NO_ROUTE') return;
+      const newTime = this.tourController.seek(percentage);
+      if (newTime) {
+        const jsDate = Cesium.JulianDate.toDate(newTime);
+        const year = jsDate.getFullYear();
+        const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+        const day = jsDate.getDate().toString().padStart(2, '0');
+        const hours = jsDate.getHours().toString().padStart(2, '0');
+        const minutes = jsDate.getMinutes().toString().padStart(2, '0');
+        const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        this.ui.updateTimeDisplay(timeString);
+        if (this.person.entity && this.person.entity.label) {
+          this.person.entity.label.text = timeString;
+        }
+      }
+    };
+    this.ui.onCustomZoom = () => this.zoomToRoute();
+    this.ui.onCustomResetStyle = () => this.handleResetStyle();
 
-    // Add a listener to update the person label with the current time
+    // Tour controller tick callback
+    this.tourController.onTick = ({ percentage, currentTime }) => {
+      this.ui.updateScrubber(percentage);
+      // The time display will be updated by the postRender listener
+    };
+
+    this.ui.init(); // Initialize UI event listeners
+    this.setState('NO_ROUTE'); // Set initial state
+
+    // Add a listener to sync our state with the Cesium clock
     this.viewer.scene.postRender.addEventListener(() => {
-      if (this.tourController.tour && this.viewer.clock.shouldAnimate) {
+      if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
+        this.syncWithClock();
+
+        // Update time displays
         const currentTime = this.viewer.clock.currentTime;
         const jsDate = Cesium.JulianDate.toDate(currentTime);
 
-        // Manual formatting to yyyy-mm-dd hh:mm:ss
         const year = jsDate.getFullYear();
         const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
         const day = jsDate.getDate().toString().padStart(2, '0');
@@ -70,15 +176,14 @@ class App {
 
         const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
+        // Update person label
         if (this.person.entity && this.person.entity.label) {
           this.person.entity.label.text = timeString;
         }
-      }
-    });
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      this.viewer.resize();
+        // Update custom UI display
+        this.ui.updateTimeDisplay(timeString);
+      }
     });
   }
 
@@ -99,6 +204,8 @@ class App {
 
     this.viewer = new Cesium.Viewer('cesiumContainer', {
       terrain: terrainProvider,
+      animation: !isMobile, // Disable on mobile
+      timeline: !isMobile, // Disable on mobile
       contextOptions: {
         webgl: {
 		  willReadFrequently: true
@@ -126,18 +233,6 @@ class App {
   }
 
   /**
-   * Handles the play tour action from the UI.
-   */
-  handlePlayTour() {
-    if (this.currentPoints.length > 0) {
-      this.tourController.startTour(this.currentPoints, this.routeCenter, this.maxRouteElevation);
-      this.viewer.clock.shouldAnimate = true;
-    } else {
-      logger.warn('No route points available to start the tour.');
-    }
-  }
-
-  /**
    * Handles the selection of a GPX file.
    * @param {File} file - The selected GPX file.
    */
@@ -151,7 +246,7 @@ class App {
 
     logger.info(`Selected file: ${file.name}`);
     this.gpxFile = file;
-    this.ui.showLoadingIndicator();
+    this.setState('LOADING');
     this.parseAndRenderGpx();
   }
 
@@ -172,13 +267,7 @@ class App {
     entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
 
     this.currentPoints = [];
-
-    // Hide UI elements
-    this.ui.hideTourControls();
-    this.ui.hideRouteStats();
-    this.ui.hideStyleControls();
-    this.ui.hideCameraStrategyControls();
-    this.ui.hideFilenameSuggestion();
+    this.setState('NO_ROUTE');
   }
 
   /**
@@ -194,16 +283,16 @@ class App {
       if (!gpx.tracks.length) {
         logger.error('No tracks found in the GPX file.');
         alert('Error: No tracks found in the GPX file.');
+        this.setState('NO_ROUTE');
         return;
       }
 
       this.renderGpx(gpx);
-      this.ui.hideLoadingIndicator();
     };
     reader.onerror = (e) => {
         logger.error('Error reading file:', e);
         alert('Error reading file.');
-        this.ui.hideLoadingIndicator();
+        this.setState('NO_ROUTE');
     }
     reader.readAsText(this.gpxFile);
   }
@@ -280,19 +369,14 @@ class App {
     this.viewer.zoomTo(this.routeEntity);
     logger.info('Route rendered successfully.');
 
-    // Show the tour controls
-    this.ui.showTourControls();
-
     // Calculate and display statistics
     const stats = StatisticsCalculator.calculate(points);
     this.ui.updateStatsContent(stats);
-    this.ui.showRouteStats();
 
-    // Show style controls
-    this.ui.showStyleControls();
+    // Prepare the tour for playback
+    this.tourController.prepareTour(points, this.routeCenter, this.maxRouteElevation);
 
-    // Show camera strategy controls
-    this.ui.showCameraStrategyControls();
+    this.setState('ROUTE_LOADED');
 
     this.fetchAndRenderPois(points);
     this.generateAndDisplayFilename(points);
@@ -321,7 +405,6 @@ class App {
     const filename = `${year}-${month}-${day}.${hours}${minutes}_${startLocation}_${endLocation}.gpx`;
 
     this.ui.updateFilenameContent(filename);
-    this.ui.showFilenameSuggestion();
   }
 
   /**
@@ -350,7 +433,6 @@ class App {
         },
       });
     });
-    this.ui.hideLoadingIndicator();
   }
 
   /**
@@ -358,7 +440,7 @@ class App {
    * @param {Array<object>} points - An array of points with lon and lat properties.
    */
   async enrichAndRenderRoute(points) {
-    this.ui.showLoadingIndicator();
+    this.setState('LOADING');
     const positions2D = Cesium.Cartesian3.fromDegreesArray(
         points.flatMap(p => [p.lon, p.lat])
     );
@@ -379,7 +461,7 @@ class App {
 
 	} catch (error) {
 		logger.error('Error during terrain sampling:', error);
-		this.ui.hideLoadingIndicator();
+		this.setState('NO_ROUTE');
 	}  }
 
   /**

@@ -5,6 +5,7 @@ class SpeedController {
     this.viewerClock = viewerClock;
     this.defaultMultiplier = 1; // Calculated based on route duration
     this.currentRelativeSpeed = 1; // From UI slider
+    this.direction = 1; // 1 for forward, -1 for backward
   }
 
   /**
@@ -27,7 +28,7 @@ class SpeedController {
    */
   setRelativeSpeed(relativeSpeed) {
     this.currentRelativeSpeed = relativeSpeed;
-    this.viewerClock.multiplier = this.defaultMultiplier * this.currentRelativeSpeed;
+    this.viewerClock.multiplier = this.defaultMultiplier * this.currentRelativeSpeed * this.direction;
     logger.info(`Relative speed set to: ${this.currentRelativeSpeed.toFixed(2)}x (Effective: ${this.viewerClock.multiplier.toFixed(0)}x)`);
   }
 
@@ -37,6 +38,30 @@ class SpeedController {
    */
   getEffectiveSpeed() {
     return this.viewerClock.multiplier;
+  }
+
+  /**
+   * Toggles the direction of playback and updates the clock.
+   */
+  toggleDirection() {
+    this.direction *= -1;
+    this.viewerClock.multiplier = this.defaultMultiplier * this.currentRelativeSpeed * this.direction;
+  }
+
+  /**
+   * Resets the playback direction to forward.
+   */
+  resetDirection() {
+    this.direction = 1;
+    this.viewerClock.multiplier = this.defaultMultiplier * this.currentRelativeSpeed * this.direction;
+  }
+
+  /**
+   * Gets the current playback direction.
+   * @returns {number} 1 for forward, -1 for backward.
+   */
+  getDirection() {
+    return this.direction;
   }
 }
 

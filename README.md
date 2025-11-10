@@ -1,4 +1,4 @@
-# GPX 3D Route Renderer
+# GPX 3D Player
 
 This project is a web-based application for visualizing GPX track data in a rich, interactive 3D environment. It provides a "Google Earth-like" experience, allowing users to upload a GPX file and see the route rendered on a 3D globe with a cinematic fly-through tour.
 
@@ -7,32 +7,39 @@ This project is a web-based application for visualizing GPX track data in a rich
 1.  **Open `index.html`** in a modern web browser.
 2.  **Select a GPX file** using the "Choose File" button.
 3.  The application will automatically render the route on the 3D globe.
-4.  Use the controls in the collapsible side panel to:
-    *   Start and reset the cinematic tour.
-    *   Control the playback speed.
-    *   Change the camera strategy (Third-Person, Top-Down, etc.).
-    *   Customize the style of the route and the person icon.
-    *   Reset all styles to their default state.
+4.  **On Desktop:** Use the controls in the collapsible side panel to start the tour, change camera angles, and customize styles.
+5.  **On Mobile:** A touch-friendly control bar will appear at the bottom of the screen for all playback functions.
 
 ## Key Features
 
-*   **Collapsible UI:** The side panel can be collapsed for a full-screen viewing experience.
+*   **State Machine Architecture:** The application is driven by a robust state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) for predictable and stable UI behavior.
+*   **Mobile-First Custom Tour Controls:** On mobile devices, a custom control bar provides a professional, touch-friendly experience with SVG icons, including:
+    *   Play/Pause and Reset.
+    *   Direction toggle (Forward/Reverse playback).
+    *   A full-width, high-granularity time scrubber.
+    *   "Zoom to Route" and "Reset Style" functions.
+*   **Collapsible UI & Quick Controls:** The main side panel can be collapsed into a narrow bar containing vertical sliders for quick, on-the-fly adjustments to speed and zoom without obscuring the view.
 *   **3D Route Visualization:** Renders GPX tracks on a high-resolution 3D globe with real-world terrain.
 *   **Cinematic Tour:** Provides an automated fly-through of the route with multiple, dynamically switchable camera perspectives:
-    *   **Overhead (Default):** A dynamic camera that orbits the traveler, completing one full circle over the course of the tour.
-    *   **Third-Person:** A classic follow-cam view that now shows the entire route on initialization.
+    *   **Overhead (Default):** A dynamic camera that orbits the traveler.
+    *   **Third-Person:** A classic follow-cam view.
     *   **Top-Down:** A static, bird's-eye view.
-    *   **First-Person:** A stable, over-the-shoulder chase camera view.
-*   **Time-Based Animation:** Utilizes Cesium's native clock and `SampledPositionProperty` for robust, smooth, and performant animation. Playback can be controlled via the main timeline widget.
-*   **Smart Speed Control:** Automatically calculates a pleasant default playback speed to target a ~90-second tour duration, with a relative slider for easy speed adjustments.
+*   **Time-Based Animation:** Utilizes Cesium's native clock for robust and smooth animation.
+*   **Smart Speed Control:** Automatically calculates a pleasant default playback speed, with a logarithmic slider for fine-tuned adjustments.
 *   **Data Enrichment:**
     *   Automatically fetches elevation data from Cesium World Terrain for 2D GPX files.
-    *   Synthesizes timestamps for GPX files that lack them, enabling tour playback for any valid track.
+    *   Synthesizes timestamps for GPX files that lack them.
 *   **Route Intelligence:**
     *   Calculates and displays key route statistics (distance, elevation gain).
     *   Fetches and displays nearby Points of Interest (POIs) from OpenStreetMap.
     *   Suggests a descriptive filename based on the route's start/end locations.
 *   **Customization:** Allows real-time customization of route color/width and person icon color/size.
+
+## License
+
+This project is licensed under the **MIT License**. See the [LICENSE](./LICENSE) file for details.
+
+The licenses for third-party dependencies are detailed in the [NOTICE.md](./NOTICE.md) file.
 
 ## Project Documentation
 
@@ -40,4 +47,4 @@ This project's detailed documentation is broken down into the following sections
 
 *   **[Requirements Document](./docs/REQUIREMENTS.md):** Detailed functional and non-functional requirements for the application.
 *   **[Design Document](./docs/DESIGN.md):** The technical architecture and design of the system.
-*   **[Development Plan](./docs.DEVELOPMENT_PLAN.md):** The iterative plan used to build the application.
+*   **[Development Plan](./docs/DEVELOPMENT_PLAN.md):** The iterative plan used to build the application.

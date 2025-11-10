@@ -113,6 +113,29 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
 
 **Checklist:**
 
--   [ ] **POI in Filename:**
+- **[FEATURE] POI in Filename:**
     -   [ ] Identify a key POI that is closest to the midpoint of the route.
     -   [ ] Integrate the key POI's name into the suggested filename string.
+
+## 7. Phase 6: Architecture and UI Overhaul
+
+**Goal:** Refactor the core application logic to be more robust and overhaul the UI for a professional, mobile-first experience.
+
+**Checklist:**
+
+-   [x] **State Machine Refactoring:**
+    -   [x] Re-architect the `App` class to function as a formal state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`).
+    -   [x] Create a single `setState()` method to manage all state transitions and UI updates, eliminating numerous bugs related to inconsistent state.
+    -   [x] Refactor the `TourController` to have distinct `prepareTour()`, `startTour()`, and `pauseTour()` methods, clarifying the tour lifecycle.
+-   [x] **Mobile-First UI Overhaul:**
+    -   [x] Design and implement a custom tour control bar for mobile, replacing the default Cesium widgets.
+    -   [x] Replace all text-based emoji buttons with a consistent set of high-quality SVG icons.
+    -   [x] Implement a two-row layout for the custom controls, providing a larger, high-granularity time scrubber.
+    *   [x] Style all buttons, sliders, and controls for a cohesive, modern, and professional look and feel.
+-   [x] **Playback & Control Enhancements:**
+    -   [x] Implement a playback direction toggle (forward/reverse) controlled by the new custom UI.
+    -   [x] Ensure all time displays (labels, custom UI) are consistently formatted (`yyyy-MM-dd HH:mm:ss`) and use the user's local time.
+-   [x] **Code & Documentation Cleanup:**
+    -   [x] Remove the "First-Person" camera view to simplify the UI.
+    -   [x] Update all project documentation (`README.md`, `DESIGN.md`, etc.) to reflect the new architecture and features.
+    -   [x] Add `LICENSE` and `NOTICE.md` files to ensure full open-source license compliance.

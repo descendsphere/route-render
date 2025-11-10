@@ -105,12 +105,21 @@ html, body, #cesiumContainer {
   width: 100%;
 }
 
-.slider-group.vertical-slider label {
-  display: block; /* Show the label */
-  color: #ccc;
-  font-size: 0.9em;
-  margin: 0px 0px 0.4em 0px;
-  width: auto; /* Override horizontal width */
+.vertical-slider label {
+  display: flex;
+  flex-direction: column; /* Stack icon and text vertically in collapsed state */
+  align-items: center;
+  gap: 5px;
+}
+
+.vertical-slider label svg {
+  width: 18px;
+  height: 18px;
+  stroke: white;
+}
+
+.vertical-slider label .label-text {
+  display: none; /* Hide text by default in vertical mode */
 }
 
 .slider-group.vertical-slider span {
@@ -134,20 +143,154 @@ html, body, #cesiumContainer {
   appearance: none;
   width: 20px;
   height: 20px;
-  background: #4CAF50;
+  background: #00BFFF; /* Deep Sky Blue */
   cursor: pointer;
   border-radius: 50%;
+  border: 2px solid white;
 }
 
 .slider-group.vertical-slider input[type="range"]::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  background: #4CAF50;
+  background: #00BFFF; /* Deep Sky Blue */
   cursor: pointer;
   border-radius: 50%;
+  border: 2px solid white;
 }
 
 /* --- End Quick Controls --- */
+
+/* --- Custom Tour Controls --- */
+#custom-tour-controls {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(20, 20, 20, 0.7);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  width: 300px; /* Give the container a fixed width */
+}
+
+.button-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.scrubber-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.time-scrubber {
+  width: 100%; /* Make the scrubber fill the available space */
+}
+
+#custom-tour-controls button {
+  background-color: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  /* display: flex; is not needed here */
+  align-items: center;
+  justify-content: center;
+}
+
+#custom-tour-controls button:hover {
+  background-color: rgba(62, 62, 62, 0.9);
+}
+
+#custom-tour-controls button:active {
+  background-color: rgba(22, 22, 22, 0.9);
+}
+
+#custom-tour-controls button svg {
+  width: 20px;
+  height: 20px;
+  stroke: white;
+}
+
+/* Play/Pause state styling */
+#custom-play-pause-btn.is-playing .icon-play {
+  display: none;
+}
+#custom-play-pause-btn.is-playing .icon-pause {
+  display: inline-block;
+}
+#custom-play-pause-btn:not(.is-playing) .icon-play {
+  display: inline-block;
+}
+#custom-play-pause-btn:not(.is-playing) .icon-pause {
+  display: none;
+}
+
+/* Rewind/Fast-Forward state styling */
+#custom-rewind-btn.is-forward .icon-rewind {
+  display: inline-block;
+}
+#custom-rewind-btn.is-forward .icon-fast-forward {
+  display: none;
+}
+#custom-rewind-btn:not(.is-forward) .icon-rewind {
+  display: none;
+}
+#custom-rewind-btn:not(.is-forward) .icon-fast-forward {
+  display: inline-block;
+}
+
+.time-display {
+  color: white;
+  font-size: 14px;
+  margin: 0 10px;
+  text-shadow: 1px 1px 2px black;
+}
+
+.time-scrubber {
+  width: 100%;
+  height: 15px;
+}
+
+.playback-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.control-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px; /* Smaller button size */
+  height: 50px; /* Smaller button size */
+  font-size: 20px; /* Smaller font size */
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.control-btn:active {
+  background: #45a049;
+  transform: scale(0.95);
+}
+
+/* Hide on desktop */
+@media (min-width: 769px) {
+  #custom-tour-controls {
+    display: none !important; /* Use important to override JS */
+  }
+}
+
+/* --- End Custom Tour Controls --- */
 
 h1, h2, h3, h4, h5 {
   margin-top: 0;
@@ -189,21 +332,47 @@ input[type="file"], input[type="number"], select {
 /* Specific styling for range inputs (sliders) */
 .slider-group {
   display: flex;
-  align-items: center;
+  flex-direction: column; /* Stack label and slider vertically */
+  align-items: flex-start; /* Align items to the start */
   margin-bottom: 10px;
 }
 
 .slider-group label {
+  display: flex; /* Allow label content (text/icon) to be flexed */
+  align-items: center;
+  gap: 5px;
   flex-shrink: 0;
-  margin-right: 10px;
-  margin-bottom: 0;
-  width: 60px; /* Wider label */
+  margin-right: 0; /* Remove margin-right */
+  margin-bottom: 5px; /* Add margin-bottom */
+  width: auto; /* Remove fixed width */
+  color: white;
+  font-size: 0.9em;
+  text-shadow: 1px 1px 2px black;
+}
+
+/* Default state for slider labels (panel expanded) */
+.slider-group label svg {
+  display: none; /* Hide icon by default */
+}
+.slider-group label .label-text {
+  display: inline; /* Show text by default */
+}
+
+/* When panel is collapsed, .vertical-slider is added */
+.vertical-slider label svg {
+  display: inline-block; /* Show icon */
+  width: 18px;
+  height: 18px;
+  stroke: white;
+}
+.vertical-slider label .label-text {
+  display: none; /* Hide text */
 }
 
 .slider-group input[type="range"] {
   flex-grow: 1;
   margin-bottom: 0;
-  max-width: 130px; /* Narrower slider */
+  max-width: none; /* Allow slider to take full width */
 }
 
 .slider-group span {
@@ -395,3 +564,33 @@ input[type="color"] {
     height: 216px; /* 3x original 72px */
   }
 }
+
+.side-panel:not(.collapsed) .vertical-slider label .label-text {
+  display: inline; /* Show text when panel is not collapsed */
+}
+
+.side-panel:not(.collapsed) .vertical-slider label svg {
+  display: none; /* Hide icon when panel is not collapsed */
+}
+.adjust-button {
+  background-color: rgba(42, 42, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  line-height: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.adjust-button:hover {
+  background-color: rgba(62, 62, 62, 0.9);
+}
+
+.adjust-button:active {
+  background-color: rgba(22, 22, 22, 0.9);
+}
+

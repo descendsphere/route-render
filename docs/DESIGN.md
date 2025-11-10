@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This document provides the technical design and architecture for the GPX 3D Route Renderer. It is based on the specifications outlined in the [Requirements Document](./REQUIREMENTS.md).
+This document provides the technical design and architecture for the GPX 3D Player. It is based on the specifications outlined in the [Requirements Document](./REQUIREMENTS.md).
 
 ## 2. System Architecture
 
@@ -12,118 +12,97 @@ The application is a purely client-side, single-page application (SPA) that runs
 
 *   **3D Rendering Engine:** **CesiumJS** is the cornerstone of the application.
 *   **GPX Parsing:** The lightweight **`gpxparser`** library is used.
-*   **UI:** The UI is constructed with **plain HTML, CSS, and modern JavaScript**.
-*   **Modularity:** All JavaScript code is structured using **ES6 Modules** (`import`/`export` syntax) to ensure a clean, maintainable, and scalable architecture. Each file represents a distinct module.
+*   **UI:** The UI is constructed with **plain HTML, CSS, and modern JavaScript**. All icons are high-quality, inline **SVG** for a professional look and feel.
+*   **Modularity:** All JavaScript code is structured using **ES6 Modules** (`import`/`export` syntax) to ensure a clean, maintainable, and scalable architecture.
 *   **Logging:** A custom `Logger.js` module prepends timestamps to all console messages.
 
-### 2.2. External Services
+### 2.2. State Machine Architecture
+
+The application's logic is governed by a formal state machine implemented in the main `App` class. This ensures predictable, robust, and bug-free transitions between different application modes.
+
+The core states are:
+*   `NO_ROUTE`: The initial state. No GPX file has been loaded.
+*   `LOADING`: A GPX file is being parsed, or elevation data is being fetched.
+*   `ROUTE_LOADED`: A route is loaded and displayed, but the tour is not playing. The user can scrub the timeline in this state.
+*   `TOUR_PLAYING`: The cinematic tour is actively playing.
+*   `TOUR_PAUSED`: The tour is paused at a specific point in time.
+
+All state changes are managed by a single `App.setState(newState)` method, which acts as the single source of truth for all UI and logical transitions.
+
+### 2.3. External Services
 
 The application relies on several external APIs:
-
-*   **Terrain and Elevation:** **Cesium World Terrain**, a high-resolution global terrain dataset, is used for both 3D terrain visualization and for fetching elevation data for 2D GPX files.
+*   **Terrain and Elevation:** **Cesium World Terrain** is used for 3D terrain and for enriching 2D GPX files.
 *   **Points of Interest (POI):** The **OpenStreetMap Overpass API** is queried to find relevant POIs near the loaded route.
-*   **Reverse Geocoding:** A free, public reverse geocoding service (Nominatim) is used to convert the start and end coordinates of the route into human-readable location names for the filename suggestion.
+*   **Reverse Geocoding:** A free, public reverse geocoding service (Nominatim) is used to generate descriptive filenames.
 
-### 2.3. Mobile Responsiveness
+### 2.4. Mobile Responsiveness
 
-The application is designed to be mobile-friendly using a combination of HTML, CSS, and JavaScript techniques:
-
-*   **Viewport Meta Tag:** A `<meta name="viewport">` tag is used in `index.html` to ensure the page is scaled correctly on mobile devices.
-*   **CSS Media Queries:** The `style.css` file contains `@media` queries to adjust the layout for smaller screens. This includes making the side panel full-width and increasing the size of touch targets.
-*   **JavaScript Optimizations:** The `app.js` module detects if the user is on a mobile device and applies several optimizations:
-    *   `viewer.resolutionScale` is set to `window.devicePixelRatio` to ensure a sharp, non-blurry rendering on high-DPI screens.
-    *   Expensive terrain features (`requestWaterMask`, `requestVertexNormals`) are disabled to improve performance.
-    *   Camera zoom controls are limited to pinch gestures for better touch interaction.
+The application is designed to be mobile-first.
+*   **Custom Tour Controls:** On mobile devices, the default Cesium widgets are hidden. They are replaced by a custom, touch-friendly control bar at the bottom of the screen, featuring large SVG icon buttons and a high-granularity scrubber.
+*   **Collapsible Panel & Quick Controls:** The main side panel can be collapsed. When collapsed, vertical sliders for Speed and Zoom appear on the left, allowing for quick adjustments without obscuring the view.
+*   **Performance Optimizations:** Expensive terrain features are disabled on mobile, and `resolutionScale` is adjusted for high-DPI screens.
 
 ## 3. Component Design
 
-The application is architected in a modular fashion, with distinct components responsible for specific functionalities.
-
-### 3.1. `App` (Main Controller)
-*   **Description:** The central orchestrator of the application.
+### 3.1. `App` (Main Controller & State Machine)
+*   **Description:** The central orchestrator of the application and manager of the state machine.
 *   **Responsibilities:**
-    *   Initializes all other components (`UIManager`, `TourController`, etc.).
-    *   Manages the overall application state (e.g., `currentPoints`).
-    *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers.
+    *   Initializes all other components.
+    *   Manages the application state via the `setState()` method.
+    *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers and state transitions.
+    *   Contains the `postRender` listener, which is the single source of truth for updating time-based UI elements (labels, displays) during playback.
 
 ### 3.2. `UIManager`
-*   **Description:** Manages all interactions with the DOM, including the collapsible side panel.
+*   **Description:** Manages all interactions with the DOM.
 *   **Responsibilities:**
     *   Holds references to all interactive DOM elements.
-    *   Initializes all UI event listeners. The panel is made collapsible by adding a click listener to the `.panel-header` element, which toggles a `.collapsed` class on the main `#side-panel`.
-    *   Handles the conversion of linear slider positions (0-100) to logarithmic values for controls like speed and camera distance, providing a more intuitive user experience.
-    *   Manages a separate, vertical quick-controls container that appears when the main panel is collapsed. It dynamically moves the slider controls between the main panel and the quick-controls container, and adjusts their appearance (e.g., abbreviating labels, changing orientation) for the context.
-    *   Provides public methods for the `App` controller to update the UI (e.g., `updateStatsContent`, `showLoadingIndicator`).
-    *   Provides public getter methods for the `App` controller to retrieve UI state (e.g., `getRouteColor`).
-    *   Fires callbacks to notify the `App` controller of user actions.
+    *   Initializes all UI event listeners.
+    *   Manages the logic for the collapsible side panel and the dynamic movement of the quick controls.
+    *   Provides a single `updateUIForState(state)` method that shows/hides all relevant UI sections based on the current application state.
+    *   Provides methods to update the state of custom controls (e.g., `setPlayPauseButtonState`) by toggling CSS classes, which in turn control the visibility of different SVG icons.
 
 ### 3.3. `TourController`
-*   **Description:** Manages the logic for the cinematic tour, camera strategies, and playback.
+*   **Description:** Manages the logic for preparing and controlling the cinematic tour.
 *   **Responsibilities:**
-    *   Takes the `Person` entity as input.
-    *   Populates a `Cesium.SampledPositionProperty` with the route's position and time data.
-    *   Manages the Cesium `Clock` to control playback (start, stop, speed).
+    *   `prepareTour()`: The main setup method. It populates the `SampledPositionProperty`, configures the Cesium `Clock`, and initializes all listeners. This is called once when a route is loaded.
+    *   `startTour()`: A simple method that begins or resumes animation by setting `viewer.clock.shouldAnimate = true` and re-initializes listeners.
+    *   `pauseTour()`: A simple method that pauses animation.
+    *   `stopTour()`: Resets the clock and cleans up all camera and UI listeners.
     *   Manages the selection and application of different camera strategies.
-    *   Synthesizes timestamp data for GPX files that lack it, enabling playback for all valid tracks.
 
 ### 3.4. `SpeedController`
-*   **Description:** A dedicated class to manage all aspects of tour playback speed.
+*   **Description:** A dedicated class to manage all aspects of tour playback speed and direction.
 *   **Responsibilities:**
-    *   Calculates a "smart" default speed to target a consistent tour duration (e.g., 90 seconds).
+    *   Calculates a "smart" default speed to target a consistent tour duration.
     *   Handles relative speed adjustments from the UI slider.
-    *   Applies the final calculated speed multiplier to the Cesium `Clock`.
+    *   Manages the playback direction (1 for forward, -1 for backward) and provides a `toggleDirection()` method.
+    *   Applies the final calculated speed and direction to the Cesium `Clock` multiplier.
 
-### 3.5. `Person`
-*   **Description:** Represents the moving entity that traverses the GPX route during the tour.
-*   **Responsibilities:**
-    *   Creates and manages a Cesium `Entity` with a `Billboard` and a `Label`.
-    *   Its `position` property is assigned the `SampledPositionProperty` from the `TourController`, allowing Cesium to drive its animation automatically.
-    *   Provides an `updateStyle` method to change its color and size dynamically.
+### 3.5. `Person` & Other Services
+*   These components remain as previously designed, providing specific, modular functionalities (Person entity, POI fetching, etc.).
 
-### 3.6. `PoiService` & Other Services
-*   **Description:** A collection of modules responsible for fetching and processing external data.
-*   **Responsibilities:**
-    *   `PoiService`: Fetches and processes POI data from the Overpass API.
-    *   `ReverseGeocodingService`: Converts coordinates to location names.
-    *   `StatisticsCalculator`: Calculates route distance and elevation gain.
-
-### 3.7. `Logger`
-*   **Description:** A centralized logging utility.
-*   **Responsibilities:**
-    *   Prepends all log messages with an ISO-formatted timestamp.
-
-## 4. Data Flow
+## 4. Data Flow (State-Driven)
 
 1.  **User selects a GPX file.** (`UIManager`)
-2.  The `onFileSelected` callback is fired, notifying the `App` controller.
-3.  `App` reads the file and uses `gpx-parser` to get the points.
-4.  `App` checks if the data has elevation. If not, it uses `Cesium.sampleTerrainMostDetailed` to enrich it.
-5.  `App` calls `renderRoute`, which in turn calls `updateRouteStyle` to draw the polyline on the map.
-6.  `App` fetches POIs and reverse geocoding data and updates the UI via the `UIManager`.
-7.  When the user clicks "Start Tour", `App` calls `tourController.startTour()`.
-8.  `TourController` populates the `SampledPositionProperty` and configures the `Clock`.
-9.  `TourController` initializes the `SpeedController` with the route's duration.
-10. `TourController` applies the default camera strategy.
-11. The user interacts with the timeline or speed slider, which updates the `Clock` via the `UIManager` -> `App` -> `TourController` -> `SpeedController` chain.
+2.  `App` transitions to `LOADING` state.
+3.  `App` parses the file. If needed, it enriches the data with elevation.
+4.  `App` calls `renderRoute`, which draws the polyline and then calls `tourController.prepareTour()`.
+5.  `App` transitions to `ROUTE_LOADED` state. The UI updates to show all controls. The tour is now ready for playback or scrubbing.
+6.  **User clicks "Play"**: `App` transitions to `TOUR_PLAYING`. The `setState` logic calls `tourController.startTour()`.
+7.  **User clicks "Pause"**: `App` transitions to `TOUR_PAUSED`. The `setState` logic calls `tourController.pauseTour()`.
+8.  **User clicks "Reset"**: `App` transitions to `ROUTE_LOADED`. The `setState` logic calls `tourController.stopTour()` and resets the UI.
+9.  **User scrubs timeline**: The `onCustomScrub` handler in `App` calls `tourController.seek()`, which updates the clock time. The handler then manually updates the UI time displays, as the `postRender` listener is not active in the `ROUTE_LOADED` state.
 
 ## 5. Camera Strategy Architecture
 
-The cinematic tour is no longer driven by a manual `requestAnimationFrame` loop. Instead, it leverages Cesium's native, time-based animation system, which is more robust and performant.
-
-The `TourController` manages a dictionary of camera strategy functions. When a strategy is selected, the `_applyCameraStrategy` method is called, which first calls `_cleanupCamera` to remove any previous listeners or tracked entities, then executes the function for the newly selected strategy.
+The `TourController` manages a dictionary of camera strategy functions. When a strategy is selected, the `_applyCameraStrategy` method is called, which first calls `_cleanupCamera` to remove any previous listeners, then executes the function for the newly selected strategy.
 
 ### 5.1. Third-Person Follow
-*   **Implementation:** Uses Cesium's native `viewer.trackedEntity` property.
-*   **Logic:** The camera is told to track the `Person` entity. The initial view is zoomed to show all entities (the entire route), providing context before the tour begins.
+*   **Implementation:** A listener on the `viewer.clock.onTick` event that uses `viewer.camera.lookAt()`.
 
 ### 5.2. Top-Down Tracking
-*   **Implementation:** A single call to `viewer.camera.setView()`.
-*   **Logic:** The camera is moved to a static position high above the calculated center of the route, looking straight down. It does not move or rotate during the tour.
+*   **Implementation:** A single call to `viewer.camera.setView()`. The camera does not move during the tour.
 
-### 5.3. First-Person (Chase Camera)
-*   **Implementation:** A listener on the `viewer.clock.onTick` event.
-*   **Logic:** On each tick of the simulation clock, the camera is positioned at a fixed offset (e.g., 50 meters behind and 25 degrees pitched down) relative to the Person entity's current position and orientation, using `viewer.camera.lookAtTransform()`.
-
-### 5.4. Overhead Orbit
-*   **Implementation:** A listener on the `viewer.scene.postUpdate` event.
-*   **Logic:** After each scene update, the camera's view is set using `viewer.camera.lookAt()`. The heading is calculated based on the tour's percentage complete (`tourProgress * 360`), ensuring it completes exactly one full rotation over the tour's duration. The pitch and range are fixed to maintain a consistent orbiting view.
+### 5.3. Overhead Orbit
+*   **Implementation:** A listener on the `viewer.scene.postUpdate` event. The heading is calculated based on the tour's percentage complete to ensure a smooth, full rotation.

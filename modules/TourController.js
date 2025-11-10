@@ -10,21 +10,21 @@ class TourController {
     this.cameraStrategy = 'overhead'; // Default strategy
     this.cameraDistance = 1000; // Default distance
     this.cameraListeners = {}; // To hold references to listeners
+    this.onTick = () => {}; // Callback for UI updates
 
     this.cameraStrategies = {
       'third-person': this._activateTrackedCamera.bind(this),
       'top-down': this._activateFixedCamera.bind(this),
-      'first-person': this._activateFirstPersonCamera.bind(this),
       'overhead': this._activateOverheadCamera.bind(this),
     };
   }
 
   /**
-   * Starts the cinematic tour.
+   * Prepares the cinematic tour by setting up the clock and position properties.
    * @param {Array<object>} points - An array of points with lon, lat, and ele properties.
    */
-  startTour(points, routeCenter, maxRouteElevation) {
-    logger.info('startTour called');
+  prepareTour(points, routeCenter, maxRouteElevation) {
+    logger.info('prepareTour called');
     this.stopTour(); // Stop any existing tour and clear camera settings
 
     this.routeCenter = routeCenter;
@@ -65,11 +65,14 @@ class TourController {
     this.viewer.clock.stopTime = stopTime.clone();
     this.viewer.clock.currentTime = startTime.clone();
     this.speedController.calculateAndSetDefault(startTime, stopTime, 90); // Calculate and set default speed
+    this.speedController.setRelativeSpeed(this.speedController.currentRelativeSpeed); // Apply current relative speed and direction
     this.viewer.clock.clockRange = Cesium.ClockRange.CLAMPED; // Stops at end
     this.viewer.clock.shouldAnimate = false; // Start paused
 
-    // Zoom the timeline to the GPX data's time range
-    this.viewer.timeline.zoomTo(startTime, stopTime);
+    // Zoom the timeline to the GPX data's time range, if it exists
+    if (this.viewer.timeline) {
+      this.viewer.timeline.zoomTo(startTime, stopTime);
+    }
 
     // Update the Person entity
     this.person.entity.position = personPositionProperty;
@@ -83,7 +86,29 @@ class TourController {
     };
 
     this.updateVisuals(); // Set initial visual state
+    this._initializeListeners();
+  }
+
+  /**
+   * Sets up the camera and UI listeners for the tour.
+   * @private
+   */
+  _initializeListeners() {
     this._applyCameraStrategy();
+
+    // Add a listener to update the UI on each tick
+    const onTickListener = () => {
+      if (!this.tour) return;
+      const totalDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
+      const elapsedTime = Cesium.JulianDate.secondsDifference(this.viewer.clock.currentTime, this.tour.startTime);
+      const percentage = Math.min(elapsedTime / totalDuration, 1.0);
+
+      const currentTime = this.viewer.clock.currentTime;
+
+      this.onTick({ percentage, currentTime });
+    };
+    this.viewer.clock.onTick.addEventListener(onTickListener);
+    this.cameraListeners['ui-tick'] = () => this.viewer.clock.onTick.removeEventListener(onTickListener);
   }
 
   /**
@@ -204,37 +229,6 @@ class TourController {
   }
 
   /**
-   * Activates the First-Person (POV) camera.
-   * @private
-   */
-  _activateFirstPersonCamera() {
-    this._cleanupCamera();
-    const listener = (clock) => {
-      if (!this.tour) return; // Do nothing if no tour is active
-      const currentPos = this.person.entity.position.getValue(clock.currentTime);
-      const currentOri = this.person.entity.orientation.getValue(clock.currentTime);
-      if (!Cesium.defined(currentPos) || !Cesium.defined(currentOri)) return;
-
-      const transform = Cesium.Matrix4.fromRotationTranslation(
-        Cesium.Matrix3.fromQuaternion(currentOri),
-        currentPos
-      );
-
-      // Offset for a clear over-the-shoulder view
-      const offset = new Cesium.HeadingPitchRange(
-        0, // Straight ahead
-        Cesium.Math.toRadians(-25), // Pitch down 25 degrees
-        this.cameraDistance // Use the new distance property
-      );
-
-      this.viewer.camera.lookAtTransform(transform, offset);
-    };
-
-    this.viewer.clock.onTick.addEventListener(listener);
-    this.cameraListeners['first-person'] = () => this.viewer.clock.onTick.removeEventListener(listener);
-  }
-
-  /**
    * Activates the Overhead / Dynamic camera.
    * @private
    */
@@ -276,6 +270,7 @@ class TourController {
     if (this.tour) {
       this.viewer.clock.currentTime = this.tour.startTime.clone();
     }
+    this.speedController.resetDirection(); // Reset direction on stop
     this._cleanupCamera();
   }
 
@@ -307,7 +302,7 @@ class TourController {
 
   regenerateTour() {
     if (this.tour) {
-      this.startTour(this.tour.points, this.routeCenter, this.maxRouteElevation);
+      this.prepareTour(this.tour.points, this.routeCenter, this.maxRouteElevation);
     }
   }
 
@@ -322,6 +317,40 @@ class TourController {
     if (this.tour) {
       this._applyCameraStrategy();
     }
+  }
+
+  // --- Custom Controls API ---
+
+  startTour() {
+    this._initializeListeners();
+    this.viewer.clock.shouldAnimate = true;
+  }
+
+  pauseTour() {
+    this.viewer.clock.shouldAnimate = false;
+  }
+
+  togglePlayPause() {
+    this.viewer.clock.shouldAnimate = !this.viewer.clock.shouldAnimate;
+    return this.viewer.clock.shouldAnimate;
+  }
+
+  getDirection() {
+    return this.speedController.getDirection();
+  }
+
+  rewind() {
+    this.speedController.toggleDirection();
+  }
+
+  seek(percentage) {
+    if (this.tour) {
+      const totalDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
+      const newTime = Cesium.JulianDate.addSeconds(this.tour.startTime, totalDuration * percentage, new Cesium.JulianDate());
+      this.viewer.clock.currentTime = newTime;
+      return newTime;
+    }
+    return null;
   }
 }
 
