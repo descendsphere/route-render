@@ -27,11 +27,24 @@ class PoiService {
 
       const data = await response.json();
       logger.info(`Found ${data.elements.length} POIs.`);
-      return data.elements.map(el => ({
-        lon: el.lon,
-        lat: el.lat,
-        name: el.tags.name || 'Unnamed POI',
-      }));
+
+      return data.elements.map(element => {
+        const tags = element.tags;
+        const poiName = tags.name || tags['name:en'] || tags.alt_name || tags.old_name || 'Unnamed';
+
+        const poi = {
+          id: element.id,
+          lat: element.lat,
+          lon: element.lon,
+          name: poiName,
+          tags: tags,
+        };
+
+        if (poiName === 'Unnamed') {
+          logger.warn('Found POI with no usable name tag. Full tags object:', tags);
+        }
+        return poi;
+      });
     } catch (error) {
       logger.error('Error fetching POIs:', error);
       return [];

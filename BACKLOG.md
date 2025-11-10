@@ -15,16 +15,42 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ## Core Functionality Enhancements
 
+- **[FEATURE] Load GPX from Public URL:** Add a text input field to the UI where users can paste a URL to a GPX file. The application will then attempt to fetch and render the GPX data from that URL.
 - **[FEATURE] Accurate POI/Waypoint Altitude:** Use `Cesium.sampleTerrainMostDetailed` to fetch the correct terrain height for all POIs and waypoints, ensuring they are rendered at their true altitude instead of being clamped to the ground.
+
+## Km-effort Integration
+
+- **[EPIC] Km-effort Integration:**
+  - **[REFACTOR] Calculate Km-effort:** Create a new method in `StatisticsCalculator.js` that processes the entire route to calculate the cumulative Km-effort at each point.
+  - **[FEATURE] Km-effort Route Coloring:** Implement a new color scheme that colors the route polyline based on the cumulative Km-effort.
+  - **[FEATURE] Km-effort Person Label:** Add the current cumulative Km-effort to the "Person" entity's label during tour playback.
+  - **[FEATURE] Display Total Km-effort:** Show the total Km-effort for the entire route in the main statistics panel.
+
+## UI/UX Enhancements
+
+- **[UI/UX] Auto-Collapse Panel on Play:** When the tour starts, automatically collapse the side panel.
+- **[FEATURE] Manual Pitch Control:** Add controls to adjust the camera pitch during the tour.
+- **[UI/UX] Preset Speed/Zoom Buttons:** As an alternative to sliders, offer preset buttons for speed and zoom levels.
+- **[UI/UX] POI Display Controls:** Add a toggle and a radius slider to control POI visibility.
+
+## Interactive Elevation Chart
+
+- **[EPIC] Interactive Elevation Chart:**
+  - **[FEATURE] Render Chart:** Use a charting library to draw the elevation profile.
+  - **[FEATURE] Live Position Indicator:** Sync a marker on the chart with the tour playback.
+  - **[FEATURE] Chart-to-Map Sync:** Allow clicking/scrubbing on the chart to move the person on the 3D map.
 
 ## Code Architecture
 
 - **[REFACTOR] Filename Generator Module:** Create a dedicated `FilenameGenerator.js` module to encapsulate the logic for constructing the suggested filename. This will make the logic more maintainable and easier to extend in the future.
+- **[REFACTOR] Smoothed Camera Velocity:** Implement a moving average on the position data to calculate a smoother velocity vector for the camera to follow.
 
 ---
 
 ### Completed Items
 
+- **[UI/UX] Auto-Collapse Panel on Play:** When the tour starts, the side panel now automatically collapses for a full-screen view.
+- **[FIX] Robust POI Naming:** The `PoiService` now uses a comprehensive fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to significantly reduce the number of "Unnamed" POIs.
 - **[REFACTOR] State Machine Architecture:** Refactored the entire application to be driven by a formal state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) in `app.js`. This resolved numerous UI consistency bugs.
 - **[FEATURE] Professional UI Overhaul:** Replaced all emoji-based text buttons with high-quality, consistent SVG icons. Styled all buttons, sliders, and controls for a cohesive, modern, and professional look and feel.
 - **[FEATURE] Custom Tour Controls:** Implemented a custom, touch-friendly tour control bar for mobile devices, replacing the default Cesium widgets. This includes Play/Pause, Direction Toggle, Reset, Zoom to Route, and Reset Style buttons, as well as a high-granularity time scrubber.

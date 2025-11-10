@@ -91,19 +91,10 @@ class UIManager {
 
     // Panel toggle functionality
     this.panelHeader.addEventListener('click', () => {
-      this.sidePanel.classList.toggle('collapsed');
       if (this.sidePanel.classList.contains('collapsed')) {
-        // Move sliders to quick controls and add vertical class
-        this.speedSliderGroup.classList.add('vertical-slider');
-        this.distanceSliderGroup.classList.add('vertical-slider');
-        this.quickControlsContainer.appendChild(this.speedSliderGroup);
-        this.quickControlsContainer.appendChild(this.distanceSliderGroup);
+        this.expandPanel();
       } else {
-        // Move sliders back to main panel and restore labels
-        this.speedSliderGroup.classList.remove('vertical-slider');
-        this.distanceSliderGroup.classList.remove('vertical-slider');
-        this.tourControls.appendChild(this.speedSliderGroup);
-        this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+        this.collapsePanel();
       }
     });
 
@@ -317,6 +308,27 @@ class UIManager {
     }
   }
 
+  collapsePanel() {
+    if (!this.sidePanel.classList.contains('collapsed')) {
+      this.sidePanel.classList.add('collapsed');
+      // Move sliders to quick controls and add vertical class
+      this.speedSliderGroup.classList.add('vertical-slider');
+      this.distanceSliderGroup.classList.add('vertical-slider');
+      this.quickControlsContainer.appendChild(this.speedSliderGroup);
+      this.quickControlsContainer.appendChild(this.distanceSliderGroup);
+    }
+  }
+
+  expandPanel() {
+    if (this.sidePanel.classList.contains('collapsed')) {
+      this.sidePanel.classList.remove('collapsed');
+      // Move sliders back to main panel and restore labels
+      this.speedSliderGroup.classList.remove('vertical-slider');
+      this.distanceSliderGroup.classList.remove('vertical-slider');
+      this.tourControls.appendChild(this.speedSliderGroup);
+      this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+    }
+  }
 }
 
 export default UIManager;

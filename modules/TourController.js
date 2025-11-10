@@ -10,6 +10,7 @@ class TourController {
     this.cameraStrategy = 'overhead'; // Default strategy
     this.cameraDistance = 1000; // Default distance
     this.cameraListeners = {}; // To hold references to listeners
+    this.uiTickListener = null; // To hold the UI tick listener
     this.onTick = () => {}; // Callback for UI updates
 
     this.cameraStrategies = {
@@ -87,6 +88,20 @@ class TourController {
 
     this.updateVisuals(); // Set initial visual state
     this._initializeListeners();
+
+    // Add a listener to update the UI on each tick
+    const onTickListener = () => {
+      if (!this.tour) return;
+      const totalDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
+      const elapsedTime = Cesium.JulianDate.secondsDifference(this.viewer.clock.currentTime, this.tour.startTime);
+      const percentage = Math.min(elapsedTime / totalDuration, 1.0);
+
+      const currentTime = this.viewer.clock.currentTime;
+
+      this.onTick({ percentage, currentTime });
+    };
+    this.viewer.clock.onTick.addEventListener(onTickListener);
+    this.uiTickListener = () => this.viewer.clock.onTick.removeEventListener(onTickListener);
   }
 
   /**
@@ -269,6 +284,10 @@ class TourController {
     }
     if (this.tour) {
       this.viewer.clock.currentTime = this.tour.startTime.clone();
+    }
+    if (this.uiTickListener) {
+      this.uiTickListener();
+      this.uiTickListener = null;
     }
     this.speedController.resetDirection(); // Reset direction on stop
     this._cleanupCamera();

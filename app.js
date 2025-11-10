@@ -30,6 +30,7 @@ class App {
     // State Transition Logic
     if (newState === 'TOUR_PLAYING') {
       this.tourController.startTour();
+      this.ui.collapsePanel(); // Auto-collapse the panel
     } else if (newState === 'TOUR_PAUSED') {
       this.tourController.pauseTour();
     } else if (newState === 'ROUTE_LOADED') {
