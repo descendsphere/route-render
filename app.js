@@ -4,13 +4,15 @@ import StatisticsCalculator from './modules/StatisticsCalculator.js';
 import PoiService from './modules/PoiService.js';
 import ReverseGeocodingService from './modules/ReverseGeocodingService.js';
 import Person from './modules/Person.js';
-import UIManager from './modules/UIManager.js'; // New import
+import UIManager from './modules/UIManager.js';
+import PerformanceTuner from './modules/PerformanceTuner.js';
 
 class App {
   constructor() {
     this.viewer = null;
     this.gpxFile = null;
     this.tourController = null;
+    this.performanceTuner = null; // New PerformanceTuner instance
     this.currentPoints = [];
     this.routeEntity = null;
     this.person = null;
@@ -62,6 +64,7 @@ class App {
 
     this.state = newState;
     this.ui.updateUIForState(this.state);
+    this.performanceTuner.requestRender(); // Request render after any state change
   }
 
   /**
@@ -87,6 +90,9 @@ class App {
 
     logger.info('Initializing application.');
     this.initCesium();
+    this.performanceTuner = new PerformanceTuner(this.viewer); // Instantiate PerformanceTuner
+    this.performanceTuner.applyPreset('medium'); // Apply a default preset
+
     this.person = new Person(this.viewer);
     this.person.create();
     this.tourController = new TourController(this.viewer, this.person);
@@ -102,14 +108,24 @@ class App {
     this.ui.onUpdateRouteColor = () => this.updateRouteStyle();
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
     this.ui.onSetCameraStrategy = (strategy) => this.tourController.setCameraStrategy(strategy);
-    this.ui.onUpdatePersonStyle = (style) => this.person.updateStyle(style);
+    this.ui.onUpdatePersonStyle = (style) => {
+      this.person.updateStyle(style);
+      this.performanceTuner.requestRender();
+    };
     this.ui.onUpdateCameraDistance = (distance) => this.tourController.setCameraDistance(distance);
     this.ui.onToggleClampToGround = () => {
       if (this.currentPoints.length > 0) {
         this.updateRouteStyle();
         this.tourController.updateVisuals();
+        this.performanceTuner.requestRender();
       }
     };
+    this.ui.onSetPerformancePreset = (preset) => this.performanceTuner.applyPreset(preset);
+    this.ui.onUpdatePerformanceSetting = (key, value) => this.performanceTuner.updateSetting(key, value);
+
+    // Connect tuner back to UI
+    this.performanceTuner.onSettingsUpdate = (settings) => this.ui.updatePerformanceControls(settings);
+    this.ui.updatePerformanceControls(this.performanceTuner.settings);
 
     // Custom tour controls callbacks
     this.ui.onCustomPlayPause = () => {
@@ -147,6 +163,7 @@ class App {
         if (this.person.entity && this.person.entity.label) {
           this.person.entity.label.text = timeString;
         }
+        this.performanceTuner.requestRender();
       }
     };
     this.ui.onCustomZoom = () => this.zoomToRoute();
@@ -202,6 +219,7 @@ class App {
       if (entity.label) entity.label.show = this.poisAreVisible;
     });
     this.ui.setPoiButtonState(this.poisAreVisible);
+    this.performanceTuner.requestRender();
   }
 
   /**
@@ -223,11 +241,29 @@ class App {
       terrain: terrainProvider,
       animation: false, // Always use custom animation controls
       timeline: false, // Always use custom timeline controls
+      geocoder: false,
+      homeButton: false,
+      sceneModePicker: false,
       contextOptions: {
+        requestWebgl2: true,
         webgl: {
-		  willReadFrequently: true
+		  //willReadFrequently: true,
+          powerPreference: "low-power"
         }
       },
+      msaaSamples: 1, // Disable MSAA (default when off)
+      // Enable on-demand rendering
+      requestRenderMode: true,
+      maximumRenderTimeChange: Infinity,
+
+      //skyBox: false,
+      //skyAtmosphere: false,
+      sun: false,
+      moon: false,
+      shadows: false, // No realtime dynamic shadows
+      infoBox: false,
+      selectionIndicator: false,
+      //fullscreenButton: false
     });
 
     // Handle high DPI displays
@@ -369,11 +405,18 @@ class App {
    */
   renderRoute(points) {
     this.currentPoints = points;
-    this.updateRouteStyle(); // Draw the route polyline
+    this.updateRouteStyle(); // Draw the route polyline or corridor
 
     // --- One-time operations after initial rendering ---
 
-    const positions = this.routeEntity.polyline.positions.getValue();
+    // Get positions regardless of entity type (polyline or corridor)
+    let positions;
+    if (this.routeEntity.polyline) {
+      positions = this.routeEntity.polyline.positions.getValue();
+    } else if (this.routeEntity.corridor) {
+      positions = this.routeEntity.corridor.positions.getValue();
+    }
+
     const boundingSphere = Cesium.BoundingSphere.fromPoints(positions);
     this.routeCenter = boundingSphere.center;
     logger.info('routeCenter:' + this.routeCenter);
@@ -504,34 +547,38 @@ class App {
     }
 
     const clampToGround = this.ui.getClampToGroundChecked();
-    const color = this.ui.getRouteColor();
+    const color = Cesium.Color.fromCssColorString(this.ui.getRouteColor());
     const width = this.ui.getRouteWidth();
 
-    const polylineOptions = {
-      width: width,
-      material: Cesium.Color.fromCssColorString(color),
-      depthFailMaterial: new Cesium.PolylineOutlineMaterialProperty({
-        color: Cesium.Color.fromCssColorString(color),
-        outlineWidth: 2,
-        outlineColor: Cesium.Color.fromCssColorString(color),
-      }),
-    };
-
     if (clampToGround) {
-      polylineOptions.positions = Cesium.Cartesian3.fromDegreesArray(
-        this.currentPoints.flatMap(p => [p.lon, p.lat])
-      );
-      polylineOptions.clampToGround = true;
+      // Use a Corridor for better visibility when clamped to ground
+      this.routeEntity = this.viewer.entities.add({
+        corridor: {
+          positions: Cesium.Cartesian3.fromDegreesArray(
+            this.currentPoints.flatMap(p => [p.lon, p.lat])
+          ),
+          width: width * 0.5, // Use a multiplier for a more visible width in meters
+          material: color,
+          clampToGround: true,
+        },
+      });
     } else {
-      polylineOptions.positions = Cesium.Cartesian3.fromDegreesArrayHeights(
-        this.currentPoints.flatMap(p => [p.lon, p.lat, p.ele])
-      );
-      polylineOptions.clampToGround = false;
+      // Use a Polyline for 3D routes with elevation
+      this.routeEntity = this.viewer.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArrayHeights(
+            this.currentPoints.flatMap(p => [p.lon, p.lat, p.ele])
+          ),
+          width: width,
+          material: new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.2,
+            color: color,
+          }),
+          clampToGround: false,
+        },
+      });
     }
-
-    this.routeEntity = this.viewer.entities.add({
-      polyline: polylineOptions,
-    });
+    this.performanceTuner.requestRender();
   }
 
   /**
@@ -540,6 +587,7 @@ class App {
   zoomToRoute() {
     if (this.routeEntity) {
       this.viewer.zoomTo(this.routeEntity);
+      this.performanceTuner.requestRender();
     }
   }
 
@@ -569,6 +617,8 @@ class App {
     // this.ui.cameraStrategyInput.dispatchEvent(new Event('change'));
     this.ui.speedSlider.dispatchEvent(new Event('input'));
     this.ui.cameraDistanceSlider.dispatchEvent(new Event('input'));
+
+    this.performanceTuner.requestRender();
   }
 }
 

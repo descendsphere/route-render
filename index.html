@@ -58,6 +58,59 @@
         </div>
       </div>
 
+      <div id="performance-controls" class="control-group" style="display: none;">
+        <h4>Performance</h4>
+        <div class="control-section">
+          <label for="performance-preset">Preset</label>
+          <select id="performance-preset">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="control-section">
+          <h5>Details</h5>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-show-fps">
+            <label for="perf-show-fps">Show FPS</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-fxaa">
+            <label for="perf-fxaa">Anti-Aliasing (FXAA)</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-lighting">
+            <label for="perf-lighting">Enable Lighting</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-shadows">
+            <label for="perf-shadows">Enable Shadows</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-fog">
+            <label for="perf-fog">Enable Fog</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-atmosphere">
+            <label for="perf-atmosphere">Enable Atmosphere</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="perf-sun-moon">
+            <label for="perf-sun-moon">Enable Sun & Moon</label>
+          </div>
+        </div>
+        <div class="slider-group">
+          <label for="perf-resolution-factor">Resolution Factor</label>
+          <input type="range" id="perf-resolution-factor" min="0.5" max="1.5" step="0.05" value="1.0">
+          <span id="perf-resolution-factor-display">1.0x</span>
+        </div>
+        <div class="slider-group">
+          <label for="perf-target-framerate">Target FPS</label>
+          <input type="range" id="perf-target-framerate" min="15" max="60" step="1" value="30">
+          <span id="perf-target-framerate-display">30</span>
+        </div>
+      </div>
+
       <div id="style-controls" class="control-group" style="display: none;">
           <h4>Style</h4>
           <div>

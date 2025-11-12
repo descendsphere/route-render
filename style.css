@@ -540,7 +540,7 @@ input[type="color"] {
   }
 
   #side-panel.collapsed {
-    width: 95vw;
+    width: 180px; /* Use a fixed width when collapsed on mobile */
     height: 45px;
   }
 
@@ -571,6 +571,13 @@ input[type="color"] {
     height: 216px; /* 3x original 72px */
   }
 }
+
+@media (max-width: 600px) {
+  .side-panel.collapsed .panel-header {
+    width: 150px; /* Reduce width when collapsed on mobile */
+  }
+}
+
 
 .side-panel:not(.collapsed) .vertical-slider label .label-text {
   display: inline; /* Show text when panel is not collapsed */

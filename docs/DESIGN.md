@@ -83,6 +83,7 @@ The application is designed to be mobile-first.
 
 ### 3.5. `Person` & Other Services
 *   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features. It also manages a static list of fetched POI data (`_poiData`) and provides methods to access and clear this data.
+*   `PerformanceTuner`: A new module responsible for managing all rendering quality and performance settings. See section 6 for details.
 *   Other components remain as previously designed, providing specific, modular functionalities.
 
 ## 4. Data Flow (State-Driven)
@@ -109,3 +110,32 @@ The `TourController` manages a dictionary of camera strategy functions. When a s
 
 ### 5.3. Overhead Orbit
 *   **Implementation:** A listener on the `viewer.scene.postUpdate` event. The heading is calculated based on the tour's percentage complete to ensure a smooth, full rotation.
+
+## 6. Performance Tuning Architecture
+
+To improve rendering efficiency and provide user control, a dynamic performance tuning system has been implemented.
+
+### 6.1. On-Demand Rendering
+The application now initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental change that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via a call to `viewer.scene.requestRender()`. This dramatically reduces CPU/GPU usage when the application is idle. All functions that cause a visual change (e.g., updating a style, scrubbing the timeline, toggling visibility) now conclude with a `requestRender()` call.
+
+### 6.2. `PerformanceTuner` Module
+A new `PerformanceTuner.js` module encapsulates all performance-related logic.
+*   **Dynamic Settings Object:** The module holds a central `settings` object that represents the current state of all performance-related properties.
+*   **Presets:** It contains definitions for 'Low', 'Medium', and 'High' quality presets. Applying a preset loads its values into the central `settings` object and then applies all settings to the viewer.
+*   **Granular Control:** The module exposes an `updateSetting(key, value)` method, which allows UI controls to modify a single property at a time (e.g., toggling shadows). This provides fine-grained control for testing and customization.
+*   **UI Synchronization:** A callback, `onSettingsUpdate`, is used to notify the `UIManager` whenever the settings change (e.g., after a preset is loaded), ensuring the UI controls always reflect the current state.
+
+### 6.3. UI Controls
+A new "Performance" section in the side panel provides comprehensive UI controls, including:
+*   A dropdown to select the 'Low', 'Medium', or 'High' presets.
+*   Checkboxes to toggle individual features like FPS display, lighting, shadows, fog, atmosphere, and FXAA.
+*   Sliders to control the `resolutionScale` (via a multiplier) and the `targetFrameRate`.
+
+## 7. Route Visualization
+
+### 7.1. Corridor for Clamped Routes
+To improve the visibility of routes that are clamped to the ground, the `updateRouteStyle` function was modified.
+*   When "Clamp to Ground" is enabled, the route is now rendered as a `Cesium.CorridorGeometry`. This creates a wide, flat ribbon on the terrain surface, which is much more prominent and easier to see than a thin polyline.
+*   The width of the corridor is derived from the "Route Width" UI setting.
+*   When "Clamp to Ground" is disabled, the route is rendered using the original 3D `polyline` to accurately represent elevation changes.
+*   The `renderRoute` function was updated to be robust, correctly calculating the bounding sphere from either a `corridor` or a `polyline` entity.
