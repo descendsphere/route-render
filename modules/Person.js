@@ -12,11 +12,13 @@ class Person {
   create() {
     logger.info('Creating person entity.');
       this.entity = this.viewer.entities.add({
+        show: false, // Control visibility at the top level
         billboard: {
           image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png', // A generic marker icon
           color: Cesium.Color.ORANGE,
           scale: 1,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM, // Anchor billboard at its bottom
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: {
           text: '',
@@ -27,6 +29,27 @@ class Person {
           pixelOffset: new Cesium.Cartesian2(0, -50),
         },
       });
+  }
+
+  /**
+   * Hides the person entity and resets its label.
+   */
+  reset() {
+    if (this.entity) {
+      this.entity.show = false;
+      if (this.entity.label) {
+        this.entity.label.text = '';
+      }
+    }
+  }
+
+  /**
+   * Shows the person entity.
+   */
+  show() {
+    if (this.entity) {
+      this.entity.show = true;
+    }
   }
 
   /**

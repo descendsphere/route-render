@@ -83,57 +83,86 @@ The application is designed to be mobile-first.
 
 ### 3.5. `Person` & Other Services
 *   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features. It also manages a static list of fetched POI data (`_poiData`) and provides methods to access and clear this data.
-*   `PerformanceTuner`: A new module responsible for managing all rendering quality and performance settings. See section 6 for details.
+*   `PerformanceTuner`: A new module responsible for managing all rendering quality and performance settings. See section 7 for details.
+*   `RouteStorage`: A new service responsible for abstracting all interactions with `localStorage`, providing a simple API to add and retrieve route records.
 *   Other components remain as previously designed, providing specific, modular functionalities.
 
-## 4. Data Flow (State-Driven)
+## 4. Data Acquisition & Storage Architecture (Storage-First Design)
 
-1.  **User selects a GPX file.** (`UIManager`)
-2.  `App` transitions to `LOADING` state.
-3.  `App` parses the file. If needed, it enriches the data with elevation.
-4.  `App` calls `renderRoute`, which draws the polyline and then calls `tourController.prepareTour()`.
-5.  `App` transitions to `ROUTE_LOADED` state. The UI updates to show all controls. The tour is now ready for playback or scrubbing.
-6.  **User clicks "Play"**: `App` transitions to `TOUR_PLAYING`. The `setState` logic calls `tourController.startTour()`.
-7.  **User clicks "Pause"**: `App` transitions to `TOUR_PAUSED`. The `setState` logic calls `tourController.pauseTour()`.
-8.  **User clicks "Reset"**: `App` transitions to `ROUTE_LOADED`. The `setState` logic calls `tourController.stopTour()` and resets the UI.
-9.  **User scrubs timeline**: The `onCustomScrub` handler in `App` calls `tourController.seek()`, which updates the clock time. The handler then manually updates the UI time displays, as the `postRender` listener is not active in the `ROUTE_LOADED` state.
+To support multi-route management and persistence, the application is designed with a "storage-first" architecture. All GPX data, regardless of its source, is funneled through a unified `localStorage` layer before being rendered. This decouples data acquisition from data presentation.
 
-## 5. Camera Strategy Architecture
+### 4.1. Data Sources
+The application supports three primary sources for GPX data:
+1.  **Static Pre-packaged Routes:** The application can be seeded with a list of official routes from a `/gpx/` directory. This is planned for a future iteration.
+2.  **User File Upload:** The user can select a `.gpx` file from their local system using a standard file input.
+3.  **URL Input:** The user can load a route from a public URL, either via a UI text input or a `gpx_url` query parameter on page load.
+
+### 4.2. The `RouteStorage` Service
+*   **Description:** A static class that acts as the sole interface for interacting with the browser's `localStorage`.
+*   **Responsibilities:**
+    *   Manages an array of "route records" under a single `localStorage` key (`gpx_route_library`).
+    *   Provides an `addRoute()` method that takes raw GPX data and metadata, creates a new route record object with a unique ID, and saves it.
+    *   Provides a `getRoutes()` method to retrieve the complete list of all saved route records.
+
+### 4.3. The Route Record Schema
+Each route is stored as a simple object with the following structure:
+```javascript
+{
+  id: 'route_1668271805000', // Unique ID
+  name: 'My Favorite Hike',    // A user-editable name
+  sourceType: 'file',         // 'file', 'url', or 'static'
+  source: 'hike.gpx',         // The original filename or URL
+  gpxString: '<xml>...</xml>', // The raw, original GPX content
+  createdAt: '2025-11-12T19:30:05.000Z',
+}
+```
+The need for data enrichment (e.g., elevation, POIs) is determined on-the-fly when a route is loaded for rendering, rather than being tracked by a separate flag.
+
+## 5. Data Flow
+
+The application's data flow follows the storage-first model.
+
+1.  **Acquisition:** The user provides a GPX file via file upload or URL input.
+2.  **Processing:** The `App` controller receives the raw `gpxString`. It calls `RouteStorage.addRoute()` to create and save a new route record.
+3.  **Parsing & Rendering:** The `App` immediately takes the `gpxString` from the newly created record and passes it to the rendering pipeline (`_processGpxData` -> `renderGpx`).
+4.  **(Future) Library-based Loading:** In a future iteration, the flow will be enhanced. Instead of immediate rendering, adding a route will simply update a "Route Library" UI. The user will then explicitly select a route from this library to trigger the rendering process.
+
+## 6. Camera Strategy Architecture
 
 The `TourController` manages a dictionary of camera strategy functions. When a strategy is selected, the `_applyCameraStrategy` method is called, which first calls `_cleanupCamera` to remove any previous listeners, then executes the function for the newly selected strategy.
 
-### 5.1. Third-Person Follow
+### 6.1. Third-Person Follow
 *   **Implementation:** A listener on the `viewer.clock.onTick` event that uses `viewer.camera.lookAt()`.
 
-### 5.2. Top-Down Tracking
+### 6.2. Top-Down Tracking
 *   **Implementation:** A single call to `viewer.camera.setView()`. The camera does not move during the tour.
 
-### 5.3. Overhead Orbit
+### 6.3. Overhead Orbit
 *   **Implementation:** A listener on the `viewer.scene.postUpdate` event. The heading is calculated based on the tour's percentage complete to ensure a smooth, full rotation.
 
-## 6. Performance Tuning Architecture
+## 7. Performance Tuning Architecture
 
 To improve rendering efficiency and provide user control, a dynamic performance tuning system has been implemented.
 
-### 6.1. On-Demand Rendering
+### 7.1. On-Demand Rendering
 The application now initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental change that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via a call to `viewer.scene.requestRender()`. This dramatically reduces CPU/GPU usage when the application is idle. All functions that cause a visual change (e.g., updating a style, scrubbing the timeline, toggling visibility) now conclude with a `requestRender()` call.
 
-### 6.2. `PerformanceTuner` Module
+### 7.2. `PerformanceTuner` Module
 A new `PerformanceTuner.js` module encapsulates all performance-related logic.
 *   **Dynamic Settings Object:** The module holds a central `settings` object that represents the current state of all performance-related properties.
 *   **Presets:** It contains definitions for 'Low', 'Medium', and 'High' quality presets. Applying a preset loads its values into the central `settings` object and then applies all settings to the viewer.
 *   **Granular Control:** The module exposes an `updateSetting(key, value)` method, which allows UI controls to modify a single property at a time (e.g., toggling shadows). This provides fine-grained control for testing and customization.
 *   **UI Synchronization:** A callback, `onSettingsUpdate`, is used to notify the `UIManager` whenever the settings change (e.g., after a preset is loaded), ensuring the UI controls always reflect the current state.
 
-### 6.3. UI Controls
+### 7.3. UI Controls
 A new "Performance" section in the side panel provides comprehensive UI controls, including:
 *   A dropdown to select the 'Low', 'Medium', or 'High' presets.
 *   Checkboxes to toggle individual features like FPS display, lighting, shadows, fog, atmosphere, and FXAA.
 *   Sliders to control the `resolutionScale` (via a multiplier) and the `targetFrameRate`.
 
-## 7. Route Visualization
+## 8. Route Visualization
 
-### 7.1. Corridor for Clamped Routes
+### 8.1. Corridor for Clamped Routes
 To improve the visibility of routes that are clamped to the ground, the `updateRouteStyle` function was modified.
 *   When "Clamp to Ground" is enabled, the route is now rendered as a `Cesium.CorridorGeometry`. This creates a wide, flat ribbon on the terrain surface, which is much more prominent and easier to see than a thin polyline.
 *   The width of the corridor is derived from the "Route Width" UI setting.

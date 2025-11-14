@@ -27,6 +27,8 @@ class UIManager {
     this.onSetPerformancePreset = () => {};
     this.onUpdatePerformanceSetting = () => {};
     this.onSetPerformancePreset = () => {};
+    this.onUrlLoad = () => {};
+    this.onRouteSelected = () => {};
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
@@ -77,6 +79,9 @@ class UIManager {
     this.customZoomBtn = document.getElementById('custom-zoom-btn');
     this.customResetStyleBtn = document.getElementById('custom-reset-style-btn');
     this.customPoiToggleBtn = document.getElementById('custom-poi-toggle-btn');
+    this.gpxUrlInput = document.getElementById('gpx-url-input');
+    this.loadFromUrlBtn = document.getElementById('load-from-url-btn');
+    this.routeLibrarySelect = document.getElementById('route-library-select');
 
     // Performance Controls
     this.performanceControls = document.getElementById('performance-controls');
@@ -121,6 +126,8 @@ class UIManager {
     });
 
     this.gpxFileInput.addEventListener('change', (event) => this.onFileSelected(event.target.files[0]));
+    this.loadFromUrlBtn.addEventListener('click', () => this.onUrlLoad(this.gpxUrlInput.value));
+    this.routeLibrarySelect.addEventListener('change', (event) => this.onRouteSelected(event.target.value));
 
     this.playButton.addEventListener('click', () => this.onPlayTour());
     this.stopButton.addEventListener('click', () => this.onStopTour());
@@ -390,6 +397,29 @@ class UIManager {
       this.distanceSliderGroup.classList.remove('vertical-slider');
       this.tourControls.appendChild(this.speedSliderGroup);
       this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+    }
+  }
+
+  /**
+   * Populates the Route Library dropdown with a list of routes.
+   * @param {Array<object>} routes - An array of route records from RouteStorage.
+   */
+  populateRouteLibrary(routes) {
+    this.routeLibrarySelect.innerHTML = ''; // Clear existing options
+
+    // Add the "No Route" option
+    const noRouteOption = document.createElement('option');
+    noRouteOption.value = 'none';
+    noRouteOption.textContent = '— Select a Route —';
+    this.routeLibrarySelect.appendChild(noRouteOption);
+
+    if (routes && routes.length > 0) {
+      routes.forEach(route => {
+        const option = document.createElement('option');
+        option.value = route.id;
+        option.textContent = route.name;
+        this.routeLibrarySelect.appendChild(option);
+      });
     }
   }
 }

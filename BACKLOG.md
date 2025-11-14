@@ -2,23 +2,18 @@
 
 This file contains a list of proposed features and enhancements for the GPX 3D Player application.
 
-## Epic: Multi-Route Management & Shareability
+## Planned
 
-- **[EPIC] Local Route Storage & Management:**
-  - **[FEATURE] Store User Routes:** When a user uploads a GPX file, store its points and fetched POIs in `localStorage`.
-  - **[FEATURE] Pre-packaged Routes:** Include several default GPX files in a `resources` folder and load them on startup.
-  - **[FEATURE] Route List UI:** Display a combined list of pre-packaged and locally stored routes in the side panel, with radio buttons to select the active route.
-  - **[FEATURE] Active Route Switching:** Allow the user to switch the active route, which will update the main view, tour controls, and stats.
-  - **[FEATURE] Remove Local Routes:** Add a "remove" button for routes stored in `localStorage`.
-  - **[FEATURE] "No Route" Option:** Always include a "No Route" option at the top of the list, which is the default state.
-- **[FEATURE] Shareable URLs:** Implement logic to read a URL parameter (e.g., `?route=route_id`) to automatically load a specific pre-packaged or locally stored route on page load.
+### Epic: Multi-Route Management & Shareability
 
-## Core Functionality Enhancements
+- **[FEATURE] Shareable URLs:** Implement logic to read a URL parameter (e.g., `?route_id=...`) to automatically select a specific route from the library on page load.
+- **[FEATURE] Manage Routes:** Add UI to allow renaming and deleting routes from the library.
 
-- **[FEATURE] Load GPX from Public URL:** Add a text input field to the UI where users can paste a URL to a GPX file. The application will then attempt to fetch and render the GPX data from that URL.
+### Core Functionality Enhancements
+
 - **[FEATURE] Accurate POI/Waypoint Altitude:** Use `Cesium.sampleTerrainMostDetailed` to fetch the correct terrain height for all POIs and waypoints, ensuring they are rendered at their true altitude instead of being clamped to the ground.
 
-## Km-effort Integration
+### Km-effort Integration
 
 - **[EPIC] Km-effort Integration:**
   - **[REFACTOR] Calculate Km-effort:** Create a new method in `StatisticsCalculator.js` that processes the entire route to calculate the cumulative Km-effort at each point.
@@ -26,27 +21,37 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
   - **[FEATURE] Km-effort Person Label:** Add the current cumulative Km-effort to the "Person" entity's label during tour playback.
   - **[FEATURE] Display Total Km-effort:** Show the total Km-effort for the entire route in the main statistics panel.
 
-## UI/UX Enhancements
+### UI/UX Enhancements
 
 - **[FEATURE] Manual Pitch Control:** Add controls to adjust the camera pitch during the tour.
 - **[UI/UX] Preset Speed/Zoom Buttons:** As an alternative to sliders, offer preset buttons for speed and zoom levels.
 
-## Interactive Elevation Chart
+### Interactive Elevation Chart
 
 - **[EPIC] Interactive Elevation Chart:**
   - **[FEATURE] Render Chart:** Use a charting library to draw the elevation profile.
   - **[FEATURE] Live Position Indicator:** Sync a marker on the chart with the tour playback.
   - **[FEATURE] Chart-to-Map Sync:** Allow clicking/scrubbing on the chart to move the person on the 3D map.
 
-## Code Architecture
+### Code Architecture
 
 - **[REFACTOR] Filename Generator Module:** Create a dedicated `FilenameGenerator.js` module to encapsulate the logic for constructing the suggested filename. This will make the logic more maintainable and easier to extend in the future.
 - **[REFACTOR] Smoothed Camera Velocity:** Implement a moving average on the position data to calculate a smoother velocity vector for the camera to follow.
+
+### Performance and Optimization
+
+- **[EPIC] Storage and Rendering Efficiency:**
+  - **[FEATURE] Reduce GPX Coordinate Precision:** Before saving a route to `localStorage`, reduce the decimal precision of latitude, longitude, and elevation values within the `gpxString`. This will significantly reduce the storage footprint with negligible impact on visual accuracy for rendering.
 
 ---
 
 ### Completed Items
 
+- **[REFACTOR] Storage-First Architecture:** Re-architected the application to use a "storage-first" model. All routes, regardless of source (file, URL, static), are now managed by a central `RouteStorage.js` module that uses `localStorage` for persistence. This decouples data acquisition from rendering and is the foundation for multi-route management.
+- **[FEATURE] Route Library & Selector:** Implemented a `<select>` dropdown in the UI that lists all routes available in `RouteStorage`. This is now the primary mechanism for loading routes.
+- **[FEATURE] Load GPX from Public URL:** Added a text input and "Load" button to the UI, allowing users to add a new route to the library from a public URL.
+- **[FEATURE] Pre-packaged Route Loading:** The application now reads one or more `manifest.json` files to discover and pre-populate the route library with a set of static, pre-packaged GPX files on first load.
+- **[REFACTOR] Unified Data Flow:** Refactored the file-picker and new URL loader to follow the storage-first model: they now add the new GPX data to `RouteStorage` and then automatically select it in the library dropdown to trigger loading, rather than rendering it directly.
 - **[FEATURE] Page Title Update:** Changed the application title to "GPX 3D Player" for better branding.
 - **[UI/UX] POI Visibility Toggle:** Added a button to the custom tour controls to toggle the visibility of Points of Interest.
 - **[FIX] Robust POI Naming:** The `PoiService` now uses a comprehensive fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to significantly reduce the number of "Unnamed" POIs.

@@ -6,6 +6,7 @@ import ReverseGeocodingService from './modules/ReverseGeocodingService.js';
 import Person from './modules/Person.js';
 import UIManager from './modules/UIManager.js';
 import PerformanceTuner from './modules/PerformanceTuner.js';
+import RouteStorage from './modules/RouteStorage.js';
 
 class App {
   constructor() {
@@ -18,8 +19,10 @@ class App {
     this.person = null;
     this.ui = null; // New UIManager instance
     this.state = 'NO_ROUTE'; // Initial state
-    this.poiEntities = []; // To store Cesium entities for POIs
     this.poisAreVisible = true; // Initial state for POI visibility
+    this.routes = []; // To cache routes from storage
+    this.activeRouteId = null; // To track the currently loaded route
+    this.poiService = null; // To hold the PoiService instance
   }
 
   /**
@@ -82,7 +85,7 @@ class App {
   /**
    * Initializes the application.
    */
-  init() {
+  async init() {
     window.addEventListener('unhandledrejection', (event) => {
       logger.error('Unhandled rejection:', event.reason);
       alert('An unexpected error occurred. Please check the console for details.');
@@ -96,6 +99,7 @@ class App {
     this.person = new Person(this.viewer);
     this.person.create();
     this.tourController = new TourController(this.viewer, this.person);
+    this.poiService = new PoiService(this.viewer);
     this.ui = new UIManager(this.viewer); // Initialize UIManager
 
     // Set up UI callbacks
@@ -122,6 +126,8 @@ class App {
     };
     this.ui.onSetPerformancePreset = (preset) => this.performanceTuner.applyPreset(preset);
     this.ui.onUpdatePerformanceSetting = (key, value) => this.performanceTuner.updateSetting(key, value);
+    this.ui.onUrlLoad = (url) => this.handleUrlLoad(url);
+    this.ui.onRouteSelected = (routeId) => this.handleRouteSelect(routeId);
 
     // Connect tuner back to UI
     this.performanceTuner.onSettingsUpdate = (settings) => this.ui.updatePerformanceControls(settings);
@@ -180,6 +186,11 @@ class App {
     this.setState('NO_ROUTE'); // Set initial state
     this.ui.setPoiButtonState(this.poisAreVisible); // Set initial POI button state
 
+    // Merge static routes from the manifest and then populate the library
+    await this.mergeStaticRoutes();
+    this.routes = RouteStorage.getRoutes();
+    this.ui.populateRouteLibrary(this.routes);
+
     // Add a listener to sync our state with the Cesium clock
     this.viewer.scene.postRender.addEventListener(() => {
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
@@ -209,17 +220,69 @@ class App {
     });
   }
 
+  async mergeStaticRoutes() {
+    try {
+      logger.info('Checking for static routes from manifests...');
+      const manifestsToProcess = ['gpx/manifest.json'];
+      const processedManifests = new Set();
+      const existingRoutes = RouteStorage.getRoutes();
+      const existingSources = new Set(existingRoutes.map(r => r.source));
+      const urlsToCache = [];
+
+      while (manifestsToProcess.length > 0) {
+        const manifestUrl = manifestsToProcess.pop();
+        if (processedManifests.has(manifestUrl)) {
+          continue; // Cycle detected or already processed
+        }
+        processedManifests.add(manifestUrl);
+
+        try {
+          logger.info(`Processing manifest: ${manifestUrl}`);
+          const response = await fetch(manifestUrl);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const manifest = await response.json();
+
+          for (const entry of manifest) {
+            if (entry.type === 'manifest') {
+              manifestsToProcess.push(entry.url);
+            } else if (entry.type === 'file') {
+              if (!existingSources.has(entry.url)) {
+                logger.info(`Adding new static route metadata: "${entry.name}"`);
+                // Add metadata to localStorage, but not the gpxString
+                RouteStorage.addRoute({
+                  name: entry.name,
+                  sourceType: 'static',
+                  source: entry.url,
+                });
+              }
+              // Always ensure the file is in the cache
+              urlsToCache.push(entry.url);
+            }
+          }
+        } catch (error) {
+          logger.error(`Could not process manifest ${manifestUrl}:`, error);
+        }
+      }
+
+      // After discovering all files, cache them in one go
+      if (urlsToCache.length > 0) {
+        await RouteStorage.cacheStaticRoutes(urlsToCache);
+      }
+
+    } catch (error) {
+      logger.error('Could not merge static routes:', error);
+    }
+  }
+
   /**
    * Toggles the visibility of all POI entities.
    */
   togglePoiVisibility() {
     this.poisAreVisible = !this.poisAreVisible;
-    this.poiEntities.forEach(entity => {
-      if (entity.billboard) entity.billboard.show = this.poisAreVisible;
-      if (entity.label) entity.label.show = this.poisAreVisible;
-    });
+    this.poiService.toggleVisibility(this.poisAreVisible);
     this.ui.setPoiButtonState(this.poisAreVisible);
-    this.performanceTuner.requestRender();
   }
 
   /**
@@ -290,17 +353,132 @@ class App {
    * @param {File} file - The selected GPX file.
    */
   handleFileSelect(file) {
-    this.clearRoute(); // Clear previous route before loading a new one
-
     if (!file) {
       logger.warn('No file selected.');
       return;
     }
 
-    logger.info(`Selected file: ${file.name}`);
-    this.gpxFile = file;
     this.setState('LOADING');
-    this.parseAndRenderGpx();
+    logger.info(`Selected file: ${file.name}`);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const gpxData = e.target.result;
+      const newRecord = RouteStorage.addRoute({
+        gpxString: gpxData,
+        name: file.name,
+        sourceType: 'file',
+        source: file.name
+      });
+
+      if (newRecord) {
+        // Refresh library and auto-select the new route
+        this.routes = RouteStorage.getRoutes();
+        this.ui.populateRouteLibrary(this.routes);
+        this.ui.routeLibrarySelect.value = newRecord.id;
+        // Manually trigger the change event to load the new route
+        this.ui.routeLibrarySelect.dispatchEvent(new Event('change'));
+      } else {
+        this.setState('NO_ROUTE');
+      }
+    };
+    reader.onerror = (e) => {
+        logger.error('Error reading file:', e);
+        alert('Error reading file.');
+        this.setState('NO_ROUTE');
+    }
+    reader.readAsText(file);
+  }
+
+  /**
+   * Handles loading a GPX file from a URL.
+   * @param {string} url - The URL of the GPX file to load.
+   */
+  async handleUrlLoad(url) {
+    if (!url || !url.startsWith('http')) {
+      alert('Please enter a valid URL.');
+      return;
+    }
+
+    this.setState('LOADING');
+    logger.info(`Adding GPX URL to library: ${url}`);
+
+    try {
+      // Extract a name from the URL path
+      const urlPath = new URL(url).pathname;
+      const fileName = urlPath.substring(urlPath.lastIndexOf('/') + 1) || 'URL Route';
+
+      const newRecord = RouteStorage.addRoute({
+        name: fileName,
+        sourceType: 'url',
+        source: url
+      });
+
+      if (newRecord) {
+        // Refresh library and auto-select the new route
+        this.routes = RouteStorage.getRoutes();
+        this.ui.populateRouteLibrary(this.routes);
+        this.ui.routeLibrarySelect.value = newRecord.id;
+        // Manually trigger the change event to load the new route
+        this.ui.routeLibrarySelect.dispatchEvent(new Event('change'));
+      } else {
+        this.setState('NO_ROUTE');
+      }
+
+    } catch (error) {
+      logger.error('Failed to add GPX from URL:', error);
+      alert(`Failed to add GPX from URL.\n\nError: ${error.message}`);
+      this.setState('NO_ROUTE');
+    }
+  }
+
+  /**
+   * Handles the selection of a route from the library dropdown.
+   * @param {string} routeId - The ID of the selected route.
+   */
+  async handleRouteSelect(routeId) {
+    this.clearRoute();
+    this.activeRouteId = null;
+
+    if (routeId === 'none') {
+      this.setState('NO_ROUTE');
+      return;
+    }
+
+    this.setState('LOADING');
+    const route = this.routes.find(r => r.id === routeId);
+
+    if (!route) {
+      logger.error(`Route with ID "${routeId}" not found in library.`);
+      this.setState('NO_ROUTE');
+      return;
+    }
+
+    logger.info(`Loading route from library: "${route.name}"`);
+    this.activeRouteId = routeId;
+
+    try {
+      let gpxString = route.gpxString;
+
+      // If gpxString is not stored, fetch it using the cache-first strategy.
+      if (!gpxString) {
+        if (!route.source) throw new Error('Route has no gpxString and no source URL.');
+        gpxString = await RouteStorage.getGpx(route.source);
+      } else {
+        logger.info('Using gpxString from localStorage.');
+      }
+
+      if (!gpxString) {
+        throw new Error(`Could not retrieve GPX content for ${route.source}`);
+      }
+
+      this._processGpxData(gpxString, route);
+
+    } catch (error) {
+      logger.error(`Failed to load route content for "${route.name}":`, error);
+      alert(`Could not load route: ${error.message}`);
+      this.setState('NO_ROUTE');
+    }
   }
 
   /**
@@ -309,6 +487,7 @@ class App {
   clearRoute() {
     logger.info('Clearing current route.');
     this.tourController.stopTour();
+    this.person.reset();
 
     if (this.routeEntity) {
       this.viewer.entities.remove(this.routeEntity);
@@ -318,8 +497,7 @@ class App {
     // Remove all entities that have our custom gpxEntity flag
     const entitiesToRemove = this.viewer.entities.values.filter(entity => entity.gpxEntity);
     entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
-    this.poiEntities = []; // Clear our stored POI entities
-    PoiService.clearPoiData(); // Clear POI data from service
+    this.poiService.clearPoisFromViewer(); // Delegate to service
 
     this.currentPoints = [];
     this.setState('NO_ROUTE');
@@ -332,17 +510,7 @@ class App {
     const reader = new FileReader();
     reader.onload = (e) => {
       const gpxData = e.target.result;
-      const gpx = new gpxParser();
-      gpx.parse(gpxData);
-
-      if (!gpx.tracks.length) {
-        logger.error('No tracks found in the GPX file.');
-        alert('Error: No tracks found in the GPX file.');
-        this.setState('NO_ROUTE');
-        return;
-      }
-
-      this.renderGpx(gpx);
+      this._processGpxData(gpxData, this.gpxFile.name, 'file', this.gpxFile.name);
     };
     reader.onerror = (e) => {
         logger.error('Error reading file:', e);
@@ -353,10 +521,29 @@ class App {
   }
 
   /**
+   * Central processing function for GPX data from any source.
+   * @param {object} route - The route record from storage.
+   */
+  _processGpxData(gpxString, route) {
+    const gpx = new gpxParser();
+    gpx.parse(gpxString);
+
+    if (!gpx.tracks.length) {
+      logger.error('No tracks found in the GPX data.');
+      alert('Error: No tracks found in the GPX data.');
+      this.setState('NO_ROUTE');
+      return;
+    }
+
+    this.renderGpx(gpx, route);
+  }
+
+  /**
    * Renders the parsed GPX data on the Cesium map.
    * @param {object} gpx - The parsed GPX data from gpx-parser-builder.
+   * @param {object} route - The route record from storage.
    */
-  renderGpx(gpx) {
+  renderGpx(gpx, route) {
     const track = gpx.tracks[0];
     const points = track.points.map(p => ({ lon: p.lon, lat: p.lat, ele: p.ele, time: p.time }));
 
@@ -391,7 +578,7 @@ class App {
 
     if (hasElevation) {
       logger.info('GPX file has elevation data.');
-      this.renderRoute(points);
+      this.renderRoute(points, route);
     } else {
       logger.warn('GPX file does not have elevation data. Automatic enrichment is required.');
       alert('This GPX file does not have elevation data. We will now fetch it automatically. This may take a moment.');
@@ -402,8 +589,9 @@ class App {
   /**
    * Renders the route on the map from 3D points.
    * @param {Array<object>} points - An array of points with lon, lat, and ele properties.
+   * @param {object} route - The route record from storage.
    */
-  renderRoute(points) {
+  renderRoute(points, route) {
     this.currentPoints = points;
     this.updateRouteStyle(); // Draw the route polyline or corridor
 
@@ -438,9 +626,25 @@ class App {
     // Prepare the tour for playback
     this.tourController.prepareTour(points, this.routeCenter, this.maxRouteElevation);
 
+    // Use a one-time postRender listener to show the person.
+    // This ensures the engine has had a frame to process the new position
+    // and clamp it to the ground before making it visible, preventing a visual glitch.
+    const showPersonListener = () => {
+      this.person.show();
+      this.viewer.scene.postRender.removeEventListener(showPersonListener);
+    };
+    this.viewer.scene.postRender.addEventListener(showPersonListener);
+
     this.setState('ROUTE_LOADED');
 
-    this.fetchAndRenderPois(points);
+    // Check if POIs are already stored, otherwise fetch them.
+    if (route.pois && route.pois.length > 0) {
+      logger.info(`Rendering ${route.pois.length} POIs from local storage.`);
+      this.poiService.renderPois(route.pois, this.poisAreVisible);
+    } else {
+      this.fetchAndRenderPois(points);
+    }
+
     this.generateAndDisplayFilename(points);
   }
 
@@ -475,36 +679,18 @@ class App {
    */
   async fetchAndRenderPois(points) {
     // Fetch POI data from PoiService
-    await PoiService.fetchPois(points);
-    const pois = PoiService.poiData;
+    await this.poiService.fetchPois(points);
+    const pois = this.poiService.poiData;
 
-    // Clear any existing POI entities before rendering new ones
-    this.poiEntities.forEach(entity => this.viewer.entities.remove(entity));
-    this.poiEntities = [];
+    // Save the fetched POIs to storage for next time
+    if (this.activeRouteId && pois.length > 0) {
+      RouteStorage.updateRoute(this.activeRouteId, { pois: pois });
+      // Also update our cached version
+      const route = this.routes.find(r => r.id === this.activeRouteId);
+      if (route) route.pois = pois;
+    }
 
-    pois.forEach(poi => {
-      const poiEntity = this.viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 300),
-        description: poi.name,
-        gpxEntity: true, // Flag for cleanup
-        billboard: {
-          image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-          color: Cesium.Color.BLUE,
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          clampToGround: true,
-          show: this.poisAreVisible, // Initial visibility
-        },
-        label: {
-          text: poi.name,
-          font: '12pt sans-serif',
-          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          pixelOffset: new Cesium.Cartesian2(0, -50),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          show: this.poisAreVisible, // Initial visibility
-        },
-      });
-      this.poiEntities.push(poiEntity); // Store the entity
-    });
+    this.poiService.renderPois(pois, this.poisAreVisible);
     this.ui.setPoiButtonState(this.poisAreVisible); // Update button state
   }
 
@@ -550,34 +736,19 @@ class App {
     const color = Cesium.Color.fromCssColorString(this.ui.getRouteColor());
     const width = this.ui.getRouteWidth();
 
-    if (clampToGround) {
-      // Use a Corridor for better visibility when clamped to ground
-      this.routeEntity = this.viewer.entities.add({
-        corridor: {
-          positions: Cesium.Cartesian3.fromDegreesArray(
-            this.currentPoints.flatMap(p => [p.lon, p.lat])
-          ),
-          width: width * 0.5, // Use a multiplier for a more visible width in meters
-          material: color,
-          clampToGround: true,
-        },
-      });
-    } else {
-      // Use a Polyline for 3D routes with elevation
-      this.routeEntity = this.viewer.entities.add({
-        polyline: {
-          positions: Cesium.Cartesian3.fromDegreesArrayHeights(
-            this.currentPoints.flatMap(p => [p.lon, p.lat, p.ele])
-          ),
-          width: width,
-          material: new Cesium.PolylineGlowMaterialProperty({
-            glowPower: 0.2,
-            color: color,
-          }),
-          clampToGround: false,
-        },
-      });
-    }
+    this.routeEntity = this.viewer.entities.add({
+      polyline: {
+        positions: Cesium.Cartesian3.fromDegreesArrayHeights(
+          this.currentPoints.flatMap(p => [p.lon, p.lat, p.ele])
+        ),
+        width: width,
+        material: new Cesium.PolylineGlowMaterialProperty({
+          glowPower: 0.2,
+          color: color,
+        }),
+        clampToGround: true,
+      },
+    });
     this.performanceTuner.requestRender();
   }
 
@@ -599,7 +770,7 @@ class App {
 
     // Reset UI controls to their default values
     this.ui.routeColorInput.value = '#FFA500';
-    this.ui.routeWidthDisplay.textContent = 2;
+    this.ui.routeWidthDisplay.textContent = 5;
     this.ui.clampToGroundInput.checked = true;
     this.ui.personColorInput.value = '#FFA500';
     this.ui.personSizeDisplay.textContent = 1;

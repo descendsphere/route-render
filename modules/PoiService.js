@@ -1,113 +1,126 @@
 import logger from './Logger.js';
 
 class PoiService {
-  static _poiData = []; // Static array to store fetched POI data
-
-  /**
-   * Fetches points of interest (POIs) near a given route.
-   * @param {Array<object>} points - An array of points with lon and lat properties.
-   * @returns {Promise<Array<object>>} A promise that resolves to an array of POIs.
-   */
-  static async fetchPois(points) {
-    if (points.length === 0) {
-      this._poiData = []; // Clear previous data
-      return [];
-    }
-
-    const bounds = this.getBounds(points);
-    const query = this.buildOverpassQuery(bounds);
-
-    try {
-      logger.info('Fetching POIs from Overpass API.');
-      const response = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      logger.info(`Found ${data.elements.length} POIs.`);
-
-      this._poiData = data.elements.map(element => {
-        const tags = element.tags;
-        const poiName = tags.name || tags['name:en'] || tags.alt_name || tags.old_name || 'Unnamed';
-
-        const poi = {
-          id: element.id,
-          lat: element.lat,
-          lon: element.lon,
-          name: poiName,
-          tags: tags,
-        };
-
-        if (poiName === 'Unnamed') {
-          logger.warn('Found POI with no usable name tag. Full tags object:', tags);
-        }
-        return poi;
-      });
-      return this._poiData;
-    } catch (error) {
-      logger.error('Error fetching POIs:', error);
-      this._poiData = []; // Clear data on error
-      return [];
-    }
-  }
-
-  /**
-   * Clears all stored POI data.
-   */
-  static clearPoiData() {
-    logger.info('Clearing POI data.');
+  constructor(viewer) {
+    this.viewer = viewer;
     this._poiData = [];
+    this._poiEntities = [];
   }
 
-  /**
-   * Returns the currently stored POI data.
-   * @returns {Array<object>} An array of POI data objects.
-   */
-  static get poiData() {
+  get poiData() {
     return this._poiData;
   }
 
   /**
-   * Calculates the bounding box of a route.
-   * @param {Array<object>} points - An array of points with lon and lat properties.
-   * @returns {object} An object with minLat, minLon, maxLat, and maxLon properties.
+   * Fetches POIs from the Overpass API based on the route's bounding box.
+   * @param {Array<object>} points - An array of points from the GPX track.
    */
-  static getBounds(points) {
-    let minLat = Infinity;
-    let minLon = Infinity;
-    let maxLat = -Infinity;
-    let maxLon = -Infinity;
+  async fetchPois(points) {
+    if (points.length === 0) {
+      this._poiData = [];
+      return;
+    }
 
+    // Calculate bounding box
+    let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
     points.forEach(p => {
       if (p.lat < minLat) minLat = p.lat;
-      if (p.lon < minLon) minLon = p.lon;
       if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lon < minLon) minLon = p.lon;
       if (p.lon > maxLon) maxLon = p.lon;
     });
 
-    return { minLat, minLon, maxLat, maxLon };
+    // Add a small buffer
+    const buffer = 0.01;
+    const bbox = `${minLat - buffer},${minLon - buffer},${maxLat + buffer},${maxLon + buffer}`;
+
+    const query = `[out:json];(node["tourism"~"attraction|hotel|museum|viewpoint"](${bbox});way["tourism"~"attraction|hotel|museum|viewpoint"](${bbox}););out center;`;
+    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+    logger.info('Fetching POIs from Overpass API...');
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      logger.info(`Found ${data.elements.length} potential POIs.`);
+
+      this._poiData = data.elements.map(el => {
+        const tags = el.tags;
+        // Robust name finding
+        const name = tags.name || tags['name:en'] || tags.alt_name || tags.old_name || 'Unnamed';
+        return {
+          id: el.id,
+          lat: el.lat || el.center.lat,
+          lon: el.lon || el.center.lon,
+          name: name,
+        };
+      }).filter(poi => poi.name !== 'Unnamed'); // Filter out unnamed POIs
+
+      logger.info(`Filtered to ${this._poiData.length} named POIs.`);
+    } catch (error) {
+      logger.error('Error fetching POIs:', error);
+      this._poiData = [];
+    }
   }
 
   /**
-   * Builds an Overpass API query to fetch POIs within a given bounding box.
-   * @param {object} bounds - An object with minLat, minLon, maxLat, and maxLon properties.
-   * @returns {string} The Overpass API query string.
+   * Renders an array of POI objects on the map.
+   * @param {Array<object>} pois - An array of POI data.
+   * @param {boolean} isVisible - The initial visibility state.
    */
-  static buildOverpassQuery(bounds) {
-    const { minLat, minLon, maxLat, maxLon } = bounds;
-    return `
-      [out:json];
-      (
-        node["tourism"="viewpoint"](${minLat},${minLon},${maxLat},${maxLon});
-        node["natural"="peak"](${minLat},${minLon},${maxLat},${maxLon});
-      );
-      out center;
-    `;
+  renderPois(pois, isVisible) {
+    this.clearPoisFromViewer();
+    this._poiData = pois; // Cache the data
+
+    this._poiEntities = this._poiData.map(poi => {
+      return this.viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 300),
+        description: poi.name,
+        gpxEntity: true, // Flag for cleanup
+        billboard: {
+          image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+          color: Cesium.Color.BLUE,
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          clampToGround: true,
+          show: isVisible,
+        },
+        label: {
+          text: poi.name,
+          font: '12pt sans-serif',
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -50),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          show: isVisible,
+        },
+      });
+    });
+  }
+
+  /**
+   * Toggles the visibility of all managed POI entities.
+   * @param {boolean} visible - The desired visibility state.
+   */
+  toggleVisibility(visible) {
+    this._poiEntities.forEach(entity => {
+      if (entity.billboard) entity.billboard.show = visible;
+      if (entity.label) entity.label.show = visible;
+    });
+    if (this.viewer.scene.requestRenderMode) {
+      this.viewer.scene.requestRender();
+    }
+  }
+
+  /**
+   * Removes all POI entities from the viewer.
+   */
+  clearPoisFromViewer() {
+    this._poiEntities.forEach(entity => this.viewer.entities.remove(entity));
+    this._poiEntities = [];
+    this._poiData = [];
   }
 }
 

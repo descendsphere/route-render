@@ -19,8 +19,19 @@
       <span id="panel-toggle-icon" class="toggle-icon">▾</span>
     </div>
     <div id="panel-content">
+      <div id="route-library-group" class="control-group">
+        <label for="route-library-select">Route Library</label>
+        <select id="route-library-select">
+          <!-- Options will be populated by UIManager.js -->
+        </select>
+      </div>
+
       <div class="control-group">
         <input type="file" id="gpx-file" accept=".gpx">
+        <div class="url-input-group">
+          <input type="text" id="gpx-url-input" placeholder="Or paste a GPX URL">
+          <button id="load-from-url-btn">Load</button>
+        </div>
       </div>
 
       <div id="tour-controls" class="control-group" style="display: none;">
@@ -124,7 +135,7 @@
                 <label for="route-width">Width:</label>
                 <div class="number-input-widget">
                   <button id="route-width-decrement" class="adjust-button">-</button>
-                  <span id="route-width-display">2</span>
+                  <span id="route-width-display">5</span>
                   <button id="route-width-increment" class="adjust-button">+</button>
                 </div>
               </div>

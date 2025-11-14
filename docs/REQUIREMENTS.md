@@ -12,6 +12,7 @@ This document specifies the functional and non-functional requirements for the G
 *   **FR-1.2:** The application must parse GPX files to extract track points, including latitude, longitude, and elevation (if present).
 *   **FR-1.3:** The application must correctly handle GPX files containing multiple track segments (`<trkseg>`) by using the first available track.
 *   **FR-1.4:** The application shall provide a fallback mechanism for GPX files without timestamp data by synthesizing timestamps based on a constant speed, allowing the tour feature to function.
+*   **FR-1.5:** The user shall be able to load a GPX file by providing a public URL.
 
 ### FR-2: 2D to 3D Data Enrichment
 

@@ -318,6 +318,33 @@ h5 { font-size: 0.9em; text-transform: uppercase; color: #999; margin-top: 15px;
   padding-bottom: 0;
 }
 
+.url-input-group {
+  display: flex;
+  margin-top: 10px;
+}
+
+.url-input-group input {
+  flex-grow: 1;
+  margin-bottom: 0;
+  border-radius: 4px 0 0 4px; /* Round left corners */
+}
+
+.url-input-group button {
+  flex-shrink: 0;
+  border-radius: 0 4px 4px 0; /* Round right corners */
+  border: 1px solid #555;
+  border-left: none;
+  background-color: #555;
+  color: white;
+  cursor: pointer;
+  padding: 0 15px;
+  transition: background-color 0.2s;
+}
+
+.url-input-group button:hover {
+  background-color: #666;
+}
+
 label {
   display: block;
   margin-bottom: 8px;

@@ -1,0 +1,31 @@
+[
+  {
+    "type": "manifest",
+    "url": "gpx/personal/manifest.json"
+  },
+  {
+    "type": "file",
+    "name": "Eibsee Rundweg",
+    "url": "gpx/simathehiker/Eibsee+Rundweg.gpx"
+  },
+  {
+    "type": "file",
+    "name": "GR® 20",
+    "url": "gpx/simathehiker/GR®+20.gpx"
+  },
+  {
+    "type": "file",
+    "name": "Hong Kong Trail Full Route",
+    "url": "gpx/simathehiker/Hong+Kong+Trail+Full+Route.gpx"
+  },
+  {
+    "type": "file",
+    "name": "The West Highland Way",
+    "url": "gpx/simathehiker/The+West+Highland+Way.gpx"
+  },
+  {
+    "type": "file",
+    "name": "Tour du Mont Blanc (TMB)",
+    "url": "gpx/simathehiker/Tour+du+Mont+Blanc+(TMB).gpx"
+  }
+]

@@ -139,3 +139,26 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Remove the "First-Person" camera view to simplify the UI.
     -   [x] Update all project documentation (`README.md`, `DESIGN.md`, etc.) to reflect the new architecture and features.
     -   [x] Add `LICENSE` and `NOTICE.md` files to ensure full open-source license compliance.
+
+## 7. Phase 7: Storage-First Architecture & Multi-Route Management
+
+**Goal:** Rearchitect the application to manage multiple routes, persist them locally, and load them from various sources.
+
+**Checklist:**
+
+-   [x] **Storage-First Architecture:**
+    -   [x] Implement `RouteStorage.js`, a dedicated service to abstract all `localStorage` interactions for CRUD (Create, Read, Update, Delete) operations on route records.
+    -   [x] Re-architect the entire data flow to be "storage-first," where all routes from any source are first saved to storage and then loaded into the viewer from this single source of truth.
+-   [x] **Multi-Source Route Loading:**
+    -   [x] **From File:** Refactor the file-picker to save the GPX data into `RouteStorage` before triggering a render.
+    -   [x] **From URL:** Implement a new UI with a text input and "Load" button to allow users to add a route from a public URL. This also saves the route to `RouteStorage`.
+    -   [x] **Pre-packaged Routes:** Implement a manifest-based system (`gpx/manifest.json`) to automatically discover and populate the library with a set of default, pre-packaged routes on first load.
+-   [x] **Route Library UI:**
+    -   [x] Add a `<select>` dropdown to the main UI to act as the "Route Library."
+    -   [x] Populate the dropdown with all routes found in `RouteStorage`.
+    -   [x] Make the dropdown the primary mechanism for selecting and loading a route into the viewer.
+-   [x] **POI Data Persistence:**
+    -   [x] Enhance `RouteStorage` to cache and persist fetched POI data alongside its corresponding route, preventing redundant API calls on subsequent loads.
+-   [x] **Modular Service Refactoring:**
+    -   [x] Refactor `PoiService` from a static class into an instantiable service to better manage state and dependencies.
+    -   [x] Update the main `App` to instantiate and use the new `PoiService`.

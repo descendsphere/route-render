@@ -9,7 +9,7 @@ class PerformanceTuner {
     this.settings = {
       resolutionScaleFactor: 1.0,
       maximumScreenSpaceError: 2,
-      targetFrameRate: 30,
+      targetFrameRate: 24,
       fxaa: false,
       enableLighting: false,
       fogEnabled: false,
@@ -34,7 +34,7 @@ class PerformanceTuner {
       medium: {
         resolutionScaleFactor: 1.0,
         maximumScreenSpaceError: 2,
-        targetFrameRate: 30,
+        targetFrameRate: 24,
         fxaa: false,
         enableLighting: false,
         fogEnabled: false,
