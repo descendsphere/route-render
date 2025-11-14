@@ -74,3 +74,8 @@ This document specifies the functional and non-functional requirements for the G
 *   **NFR-6.1:** The application must implement a logging framework that captures events at various levels (e.g., INFO, WARN, ERROR).
 *   **NFR-6.2:** Log entries must be verbose and include a timestamp to provide context.
 *   **NFR-6.3:** Key events to be logged include application initialization, file parsing, API requests, and errors.
+
+### NFR-7: Storage Efficiency
+
+*   **NFR-7.1:** The application must be mindful of `localStorage` limitations and should not store excessive or unnecessary data.
+*   **NFR-7.2:** The application shall reduce the precision of GPX coordinates before saving them to `localStorage` to conserve space.

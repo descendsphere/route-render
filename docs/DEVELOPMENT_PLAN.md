@@ -162,3 +162,5 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
 -   [x] **Modular Service Refactoring:**
     -   [x] Refactor `PoiService` from a static class into an instantiable service to better manage state and dependencies.
     -   [x] Update the main `App` to instantiate and use the new `PoiService`.
+-   [x] **Storage Optimization:**
+    -   [x] Implement a GPX coordinate precision reduction feature in `RouteStorage` to decrease the size of the `gpxString` in `localStorage`. Lat/lon are reduced to 6 decimal places and elevation to 2.

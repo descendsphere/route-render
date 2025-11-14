@@ -101,7 +101,7 @@ The application supports three primary sources for GPX data:
 *   **Description:** A static class that acts as the sole interface for interacting with the browser's `localStorage`.
 *   **Responsibilities:**
     *   Manages an array of "route records" under a single `localStorage` key (`gpx_route_library`).
-    *   Provides an `addRoute()` method that takes raw GPX data and metadata, creates a new route record object with a unique ID, and saves it.
+    *   Provides an `addRoute()` method that takes raw GPX data and metadata, creates a new route record object with a unique ID, and saves it. Before saving, it reduces the coordinate precision of the `gpxString` to 6 decimal places for lat/lon and 2 for elevation to optimize storage.
     *   Provides a `getRoutes()` method to retrieve the complete list of all saved route records.
 
 ### 4.3. The Route Record Schema

@@ -38,15 +38,11 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 - **[REFACTOR] Filename Generator Module:** Create a dedicated `FilenameGenerator.js` module to encapsulate the logic for constructing the suggested filename. This will make the logic more maintainable and easier to extend in the future.
 - **[REFACTOR] Smoothed Camera Velocity:** Implement a moving average on the position data to calculate a smoother velocity vector for the camera to follow.
 
-### Performance and Optimization
-
-- **[EPIC] Storage and Rendering Efficiency:**
-  - **[FEATURE] Reduce GPX Coordinate Precision:** Before saving a route to `localStorage`, reduce the decimal precision of latitude, longitude, and elevation values within the `gpxString`. This will significantly reduce the storage footprint with negligible impact on visual accuracy for rendering.
-
 ---
 
 ### Completed Items
 
+- **[FEATURE] GPX Coordinate Precision Reduction:** Implemented a function in `RouteStorage.js` that reduces the decimal precision of latitude, longitude, and elevation values within the `gpxString` before saving to `localStorage`. This significantly reduces the storage footprint with negligible impact on visual accuracy.
 - **[REFACTOR] Storage-First Architecture:** Re-architected the application to use a "storage-first" model. All routes, regardless of source (file, URL, static), are now managed by a central `RouteStorage.js` module that uses `localStorage` for persistence. This decouples data acquisition from rendering and is the foundation for multi-route management.
 - **[FEATURE] Route Library & Selector:** Implemented a `<select>` dropdown in the UI that lists all routes available in `RouteStorage`. This is now the primary mechanism for loading routes.
 - **[FEATURE] Load GPX from Public URL:** Added a text input and "Load" button to the UI, allowing users to add a new route to the library from a public URL.

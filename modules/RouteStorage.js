@@ -93,7 +93,7 @@ class RouteStorage {
 
     // Only add gpxString if it's provided (for file-based routes)
     if (gpxString) {
-      newRecord.gpxString = gpxString;
+      newRecord.gpxString = this._reduceGpxPrecision(gpxString);
     }
 
     routes.push(newRecord);
@@ -138,6 +138,31 @@ class RouteStorage {
       logger.error('Error updating route in local storage:', error);
       return null;
     }
+  }
+
+  /**
+   * Reduces the precision of coordinates and elevation in a GPX string.
+   * @param {string} gpxString - The original GPX content.
+   * @returns {string} The GPX content with reduced precision.
+   * @private
+   */
+  static _reduceGpxPrecision(gpxString) {
+    // Reduce precision of lat and lon attributes in any tag to 6 decimal places
+    let reducedGpx = gpxString.replace(/(lat|lon)="(-?\d+\.\d+)"/g, (match, p1, p2) => {
+      const value = parseFloat(p2).toFixed(6);
+      return `${p1}="${value}"`;
+    });
+
+    // Reduce precision of content within <ele> tags to 2 decimal places
+    reducedGpx = reducedGpx.replace(/(<ele>)(-?\d+\.\d+)(<\/ele>)/g, (match, p1, p2, p3) => {
+      const value = parseFloat(p2).toFixed(2);
+      return `${p1}${value}${p3}`;
+    });
+
+    logger.info('Original GPX string length:', gpxString.length);
+    logger.info('Reduced GPX string length:', reducedGpx.length);
+
+    return reducedGpx;
   }
 }
 
