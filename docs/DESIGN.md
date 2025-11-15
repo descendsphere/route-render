@@ -108,7 +108,7 @@ The application supports three primary sources for GPX data:
 Each route is stored as a simple object with the following structure:
 ```javascript
 {
-  id: 'route_1668271805000', // Unique ID
+  id: 'gpx/simathehiker/Tour+du+Mont+Blanc+(TMB).gpx', // Unique ID
   name: 'My Favorite Hike',    // A user-editable name
   sourceType: 'file',         // 'file', 'url', or 'static'
   source: 'hike.gpx',         // The original filename or URL
@@ -116,6 +116,10 @@ Each route is stored as a simple object with the following structure:
   createdAt: '2025-11-12T19:30:05.000Z',
 }
 ```
+The `id` is generated based on the `sourceType`:
+- For `static` and `url` routes, the `id` is the `source` URL itself, providing a stable, shareable identifier.
+- For `file` routes, the `id` is a `crypto.randomUUID()` since filenames are not guaranteed to be unique.
+
 The need for data enrichment (e.g., elevation, POIs) is determined on-the-fly when a route is loaded for rendering, rather than being tracked by a separate flag.
 
 ## 5. Data Flow

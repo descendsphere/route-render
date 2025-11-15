@@ -86,9 +86,6 @@ class TourController {
       stopTime: stopTime,
     };
 
-    this.updateVisuals(); // Set initial visual state
-    this._initializeListeners();
-
     // Add a listener to update the UI on each tick
     const onTickListener = () => {
       if (!this.tour) return;

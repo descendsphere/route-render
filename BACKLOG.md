@@ -6,7 +6,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Epic: Multi-Route Management & Shareability
 
-- **[FEATURE] Shareable URLs:** Implement logic to read a URL parameter (e.g., `?route_id=...`) to automatically select a specific route from the library on page load.
 - **[FEATURE] Manage Routes:** Add UI to allow renaming and deleting routes from the library.
 
 ### Core Functionality Enhancements
@@ -42,6 +41,7 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[FEATURE] Shareable URLs:** Implemented logic to read a `route_id` or a `url` URL parameter on page load, automatically selecting and loading the specified route. This allows sharing of both pre-packaged and ad-hoc URL routes.
 - **[FEATURE] GPX Coordinate Precision Reduction:** Implemented a function in `RouteStorage.js` that reduces the decimal precision of latitude, longitude, and elevation values within the `gpxString` before saving to `localStorage`. This significantly reduces the storage footprint with negligible impact on visual accuracy.
 - **[REFACTOR] Storage-First Architecture:** Re-architected the application to use a "storage-first" model. All routes, regardless of source (file, URL, static), are now managed by a central `RouteStorage.js` module that uses `localStorage` for persistence. This decouples data acquisition from rendering and is the foundation for multi-route management.
 - **[FEATURE] Route Library & Selector:** Implemented a `<select>` dropdown in the UI that lists all routes available in `RouteStorage`. This is now the primary mechanism for loading routes.

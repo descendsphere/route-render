@@ -191,6 +191,25 @@ class App {
     this.routes = RouteStorage.getRoutes();
     this.ui.populateRouteLibrary(this.routes);
 
+    // Check for a route_id or url in the URL and auto-load it
+    const urlParams = new URLSearchParams(window.location.search);
+    const routeIdToLoad = urlParams.get('route_id');
+    const urlToLoad = urlParams.get('url');
+
+    if (routeIdToLoad) {
+      const routeExists = this.routes.some(route => route.id === routeIdToLoad);
+      if (routeExists) {
+        logger.info(`Found route_id in URL, attempting to auto-load: ${routeIdToLoad}`);
+        this.ui.routeLibrarySelect.value = routeIdToLoad;
+        this.ui.routeLibrarySelect.dispatchEvent(new Event('change'));
+      } else {
+        logger.warn(`Route with ID "${routeIdToLoad}" from URL not found in library.`);
+      }
+    } else if (urlToLoad) {
+      logger.info(`Found url in URL, attempting to auto-load: ${urlToLoad}`);
+      this.handleUrlLoad(urlToLoad);
+    }
+
     // Add a listener to sync our state with the Cesium clock
     this.viewer.scene.postRender.addEventListener(() => {
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
@@ -339,7 +358,7 @@ class App {
       this.viewer.resolutionScale = Math.min(window.devicePixelRatio, 1.5);
     }
 
-    this.viewer.camera.flyTo({
+    this.viewer.camera.setView({
       destination : Cesium.Cartesian3.fromDegrees(114.109, 22.0, 90000),
       orientation : {
         heading : Cesium.Math.toRadians(0.0),
@@ -397,6 +416,15 @@ class App {
   async handleUrlLoad(url) {
     if (!url || !url.startsWith('http')) {
       alert('Please enter a valid URL.');
+      return;
+    }
+
+    // Check if a route with this URL as its source already exists
+    const existingRoute = this.routes.find(route => route.source === url);
+    if (existingRoute) {
+      logger.info(`Route from URL "${url}" already exists. Selecting it.`);
+      this.ui.routeLibrarySelect.value = existingRoute.id;
+      this.ui.routeLibrarySelect.dispatchEvent(new Event('change'));
       return;
     }
 

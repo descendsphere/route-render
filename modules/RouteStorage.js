@@ -82,9 +82,22 @@ class RouteStorage {
 
     const routes = this.getRoutes();
     const now = new Date();
+    let id;
+
+    if (sourceType === 'static' || sourceType === 'url') {
+      id = source;
+    } else {
+      id = crypto.randomUUID();
+    }
+
+    // Check if a route with this ID already exists
+    if (routes.some(route => route.id === id)) {
+      logger.warn(`Route with ID "${id}" already exists. Not adding duplicate.`);
+      return routes.find(route => route.id === id);
+    }
 
     const newRecord = {
-      id: crypto.randomUUID(), // Use a true UUID for uniqueness
+      id,
       name,
       sourceType,
       source,
@@ -100,7 +113,7 @@ class RouteStorage {
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(routes));
-      logger.info(`Successfully added route "${name}" to local storage.`);
+      logger.info(`Successfully added route "${name}" with ID "${id}" to local storage.`);
       return newRecord;
     } catch (error) {
       logger.error('Error saving route to local storage:', error);

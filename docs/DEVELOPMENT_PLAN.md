@@ -164,3 +164,5 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Update the main `App` to instantiate and use the new `PoiService`.
 -   [x] **Storage Optimization:**
     -   [x] Implement a GPX coordinate precision reduction feature in `RouteStorage` to decrease the size of the `gpxString` in `localStorage`. Lat/lon are reduced to 6 decimal places and elevation to 2.
+-   [x] **Shareable URLs:**
+    -   [x] Implemented logic to read a `route_id` or `url` URL parameter on page load and automatically select and load the specified route. This allows sharing of both pre-packaged and ad-hoc URL routes.
