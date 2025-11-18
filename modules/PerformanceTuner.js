@@ -4,9 +4,9 @@ const TUNING_CONFIG = {
   monitoringInterval: 1000, // Check every 2 seconds
   debounceDelay: 1500,      // Wait 5 seconds before changing preset
   profiles: {
-    'Prioritize Speed': { lowerBound: 30, upperBound: 60 },
+    'Performance': { lowerBound: 30, upperBound: 60 },
     'Balanced': { lowerBound: 20, upperBound: 30 },
-    'Prioritize Quality': { lowerBound: 10, upperBound: 20 },
+    'Power Saver': { lowerBound: 10, upperBound: 20 },
   }
 };
 
