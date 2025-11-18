@@ -635,3 +635,29 @@ input[type="color"] {
   background-color: rgba(22, 22, 22, 0.9);
 }
 
+/* --- Advanced Controls --- */
+.collapsible-header {
+  cursor: pointer;
+  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  position: relative;
+}
+
+.collapsible-header::after {
+  content: '▾';
+  position: absolute;
+  right: 5px;
+  top: 0;
+  font-size: 20px;
+  transition: transform 0.3s ease-in-out;
+}
+
+.collapsible-header.active::after {
+  transform: rotate(-180deg);
+}
+
+.collapsible-content {
+  padding: 10px 0;
+}
+

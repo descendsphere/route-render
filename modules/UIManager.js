@@ -24,11 +24,10 @@ class UIManager {
     this.onCustomZoom = () => {};
     this.onCustomResetStyle = () => {};
     this.onTogglePoiVisibility = () => {}; // New callback
-    this.onSetPerformancePreset = () => {};
-    this.onUpdatePerformanceSetting = () => {};
-    this.onSetPerformancePreset = () => {};
+    this.onSetProfile = () => {};
     this.onUrlLoad = () => {};
     this.onRouteSelected = () => {};
+    this.onClearStorage = () => {};
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
@@ -81,22 +80,16 @@ class UIManager {
     this.customPoiToggleBtn = document.getElementById('custom-poi-toggle-btn');
     this.gpxUrlInput = document.getElementById('gpx-url-input');
     this.loadFromUrlBtn = document.getElementById('load-from-url-btn');
+    this.clearStorageButton = document.getElementById('clear-storage-button');
     this.routeLibrarySelect = document.getElementById('route-library-select');
 
     // Performance Controls
-    this.performanceControls = document.getElementById('performance-controls');
-    this.performancePresetInput = document.getElementById('performance-preset');
-    this.perfShowFpsInput = document.getElementById('perf-show-fps');
-    this.perfFxaaInput = document.getElementById('perf-fxaa');
-    this.perfLightingInput = document.getElementById('perf-lighting');
-    this.perfShadowsInput = document.getElementById('perf-shadows');
-    this.perfFogInput = document.getElementById('perf-fog');
-    this.perfAtmosphereInput = document.getElementById('perf-atmosphere');
-    this.perfSunMoonInput = document.getElementById('perf-sun-moon');
-    this.perfResolutionFactorSlider = document.getElementById('perf-resolution-factor');
-    this.perfResolutionFactorDisplay = document.getElementById('perf-resolution-factor-display');
-    this.perfTargetFramerateSlider = document.getElementById('perf-target-framerate');
-    this.perfTargetFramerateDisplay = document.getElementById('perf-target-framerate-display');
+    this.performanceProfileInput = document.getElementById('performance-profile');
+
+    // Advanced Controls
+    this.advancedControls = document.getElementById('advanced-controls');
+    this.advancedControlsHeader = this.advancedControls.querySelector('.collapsible-header');
+    this.advancedControlsContent = this.advancedControls.querySelector('.collapsible-content');
   }
 
   /**
@@ -127,6 +120,7 @@ class UIManager {
 
     this.gpxFileInput.addEventListener('change', (event) => this.onFileSelected(event.target.files[0]));
     this.loadFromUrlBtn.addEventListener('click', () => this.onUrlLoad(this.gpxUrlInput.value));
+    this.clearStorageButton.addEventListener('click', () => this.onClearStorage());
     this.routeLibrarySelect.addEventListener('change', (event) => this.onRouteSelected(event.target.value));
 
     this.playButton.addEventListener('click', () => this.onPlayTour());
@@ -193,24 +187,7 @@ class UIManager {
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
 
     // Performance controls
-    this.performancePresetInput.addEventListener('change', (event) => this.onSetPerformancePreset(event.target.value));
-    this.perfShowFpsInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('debugShowFramesPerSecond', e.target.checked));
-    this.perfFxaaInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('fxaa', e.target.checked));
-    this.perfLightingInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('enableLighting', e.target.checked));
-    this.perfShadowsInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('shadows', e.target.checked));
-    this.perfFogInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('fogEnabled', e.target.checked));
-    this.perfAtmosphereInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('atmosphere', e.target.checked));
-    this.perfSunMoonInput.addEventListener('change', (e) => this.onUpdatePerformanceSetting('sunAndMoon', e.target.checked));
-    this.perfResolutionFactorSlider.addEventListener('input', (e) => {
-      const factor = parseFloat(e.target.value);
-      this.perfResolutionFactorDisplay.textContent = `${factor.toFixed(2)}x`;
-      this.onUpdatePerformanceSetting('resolutionScaleFactor', factor);
-    });
-    this.perfTargetFramerateSlider.addEventListener('input', (e) => {
-      const fps = parseInt(e.target.value, 30);
-      this.perfTargetFramerateDisplay.textContent = fps;
-      this.onUpdatePerformanceSetting('targetFrameRate', fps);
-    });
+    this.performanceProfileInput.addEventListener('change', (event) => this.onSetProfile(event.target.value));
 
     // Custom tour controls listeners
     this.customPlayPauseBtn.addEventListener('click', () => this.onCustomPlayPause());
@@ -222,6 +199,14 @@ class UIManager {
     this.timeScrubber.addEventListener('input', (event) => {
       const percentage = parseInt(event.target.value, 10) / 1000;
       this.onCustomScrub(percentage);
+    });
+
+    // Advanced controls collapsible
+    this.advancedControlsContent.style.display = 'none'; // Collapse by default
+    this.advancedControlsHeader.classList.add('active'); // Set to active when collapsed
+    this.advancedControlsHeader.addEventListener('click', () => {
+      this.advancedControlsContent.style.display = this.advancedControlsContent.style.display === 'none' ? 'block' : 'none';
+      this.advancedControlsHeader.classList.toggle('active');
     });
   }
 
@@ -325,25 +310,6 @@ class UIManager {
   getCameraDistance() {
     const position = 100 - parseInt(this.cameraDistanceSlider.value, 10);
     return this._logValue(position, 50, 20000);
-  }
-
-  /**
-   * Syncs the state of the performance UI controls with the given settings object.
-   * @param {object} settings - The settings object from PerformanceTuner.
-   */
-  updatePerformanceControls(settings) {
-    this.perfShowFpsInput.checked = settings.debugShowFramesPerSecond;
-    this.perfFxaaInput.checked = settings.fxaa;
-    this.perfLightingInput.checked = settings.enableLighting;
-    this.perfShadowsInput.checked = settings.shadows;
-    this.perfFogInput.checked = settings.fogEnabled;
-    this.perfAtmosphereInput.checked = settings.atmosphere;
-    this.perfSunMoonInput.checked = settings.sunAndMoon;
-
-    this.perfResolutionFactorSlider.value = settings.resolutionScaleFactor;
-    this.perfResolutionFactorDisplay.textContent = `${settings.resolutionScaleFactor.toFixed(2)}x`;
-    this.perfTargetFramerateSlider.value = settings.targetFrameRate;
-    this.perfTargetFramerateDisplay.textContent = settings.targetFrameRate;
   }
 
   // --- Custom Tour Control Updaters ---

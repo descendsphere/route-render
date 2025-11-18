@@ -146,23 +146,38 @@ The `TourController` manages a dictionary of camera strategy functions. When a s
 
 ## 7. Performance Tuning Architecture
 
-To improve rendering efficiency and provide user control, a dynamic performance tuning system has been implemented.
+To ensure a smooth user experience across a wide range of devices, the application features a sophisticated automatic performance tuning system.
 
 ### 7.1. On-Demand Rendering
-The application now initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental change that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via a call to `viewer.scene.requestRender()`. This dramatically reduces CPU/GPU usage when the application is idle. All functions that cause a visual change (e.g., updating a style, scrubbing the timeline, toggling visibility) now conclude with a `requestRender()` call.
+The application initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental change that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via a call to `viewer.scene.requestRender()`. This dramatically reduces CPU/GPU usage when the application is idle. All functions that cause a visual change (e.g., updating a style, scrubbing the timeline, toggling visibility) now conclude with a `requestRender()` call.
 
 ### 7.2. `PerformanceTuner` Module
-A new `PerformanceTuner.js` module encapsulates all performance-related logic.
-*   **Dynamic Settings Object:** The module holds a central `settings` object that represents the current state of all performance-related properties.
-*   **Presets:** It contains definitions for 'Low', 'Medium', and 'High' quality presets. Applying a preset loads its values into the central `settings` object and then applies all settings to the viewer.
-*   **Granular Control:** The module exposes an `updateSetting(key, value)` method, which allows UI controls to modify a single property at a time (e.g., toggling shadows). This provides fine-grained control for testing and customization.
-*   **UI Synchronization:** A callback, `onSettingsUpdate`, is used to notify the `UIManager` whenever the settings change (e.g., after a preset is loaded), ensuring the UI controls always reflect the current state.
+A new `PerformanceTuner.js` module encapsulates all performance-related logic. It is designed as an "autopilot" for performance.
+
+#### 7.2.1. Performance Profiles (The Goal)
+The user is presented with a single, simple "Performance Profile" selector in the UI, which defines their desired experience:
+*   **`Prioritize Speed`:** Aims for the highest possible frame rate.
+*   **`Balanced`:** Aims for a smooth frame rate with good visual quality.
+*   **`Prioritize Quality`:** Aims for the best possible visual quality, even at a lower frame rate.
+
+Each profile corresponds to a target FPS range (e.g., 30-45 FPS for "Balanced"), which is defined in a central `TUNING_CONFIG` object.
+
+#### 7.2.2. Quality Presets (The Tools)
+The `PerformanceTuner` contains a private, ordered array of quality "presets". This array acts as a granular "ladder" of quality levels, from lowest to highest. Each preset is a collection of concrete rendering settings (e.g., `resolutionScaleFactor`, `maximumScreenSpaceError`, `fxaa`).
+
+#### 7.2.3. The Monitor-Analyze-Act Loop
+The core of the auto-tuner is a feedback loop that runs continuously:
+1.  **Monitor:** A `postRender` event listener accurately measures the average FPS over a set interval (e.g., every 1-2 seconds).
+2.  **Analyze:** The measured FPS is compared against the target range of the user's currently selected Performance Profile.
+3.  **Act:**
+    *   If the FPS is below the target range, the tuner moves down the quality ladder by applying a lower-quality preset.
+    *   If the FPS is above the target range, the tuner moves up the quality ladder by applying a higher-quality preset.
+    *   A "debounce" delay is used to prevent the settings from changing too frequently.
+
+This system ensures that the application always tries to deliver the best possible visual quality while respecting the user's stated performance goals.
 
 ### 7.3. UI Controls
-A new "Performance" section in the side panel provides comprehensive UI controls, including:
-*   A dropdown to select the 'Low', 'Medium', or 'High' presets.
-*   Checkboxes to toggle individual features like FPS display, lighting, shadows, fog, atmosphere, and FXAA.
-*   Sliders to control the `resolutionScale` (via a multiplier) and the `targetFrameRate`.
+The "Performance" section in the side panel has been simplified to a single dropdown menu to select the desired "Performance Profile". All granular controls have been removed to provide a cleaner, more user-friendly experience.
 
 ## 8. Route Visualization
 
@@ -172,3 +187,19 @@ To improve the visibility of routes that are clamped to the ground, the `updateR
 *   The width of the corridor is derived from the "Route Width" UI setting.
 *   When "Clamp to Ground" is disabled, the route is rendered using the original 3D `polyline` to accurately represent elevation changes.
 *   The `renderRoute` function was updated to be robust, correctly calculating the bounding sphere from either a `corridor` or a `polyline` entity.
+
+## 9. Shareable URLs
+
+To allow users to easily share links to specific routes, the application automatically updates the browser's URL when a route is loaded.
+
+### 9.1. URL Parameters
+Two URL parameters are used to load routes:
+*   `?route_id=...`: Used for pre-packaged "static" routes that are part of the application's built-in library.
+*   `?url=...`: Used for routes loaded from an external URL.
+
+### 9.2. Implementation
+*   A private `_updateShareableUrl(route)` method in the `App` class is the central point for all URL updates.
+*   This method is called from `renderRoute()` whenever a route is successfully loaded, and from `clearRoute()` to remove the parameters when no route is active.
+*   It uses the `window.history.pushState()` API to update the URL in the address bar without causing a page reload.
+*   The logic correctly distinguishes between `static` and `url` routes to generate the appropriate URL parameter.
+*   Routes loaded from local files (`sourceType: 'file'`) are not shareable, so the URL parameters are cleared when they are active.

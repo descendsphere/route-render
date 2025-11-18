@@ -94,7 +94,6 @@ class App {
     logger.info('Initializing application.');
     this.initCesium();
     this.performanceTuner = new PerformanceTuner(this.viewer); // Instantiate PerformanceTuner
-    this.performanceTuner.applyPreset('medium'); // Apply a default preset
 
     this.person = new Person(this.viewer);
     this.person.create();
@@ -124,14 +123,10 @@ class App {
         this.performanceTuner.requestRender();
       }
     };
-    this.ui.onSetPerformancePreset = (preset) => this.performanceTuner.applyPreset(preset);
-    this.ui.onUpdatePerformanceSetting = (key, value) => this.performanceTuner.updateSetting(key, value);
+    this.ui.onSetProfile = (profile) => this.performanceTuner.setProfile(profile);
     this.ui.onUrlLoad = (url) => this.handleUrlLoad(url);
     this.ui.onRouteSelected = (routeId) => this.handleRouteSelect(routeId);
-
-    // Connect tuner back to UI
-    this.performanceTuner.onSettingsUpdate = (settings) => this.ui.updatePerformanceControls(settings);
-    this.ui.updatePerformanceControls(this.performanceTuner.settings);
+    this.ui.onClearStorage = () => this.handleClearStorage();
 
     // Custom tour controls callbacks
     this.ui.onCustomPlayPause = () => {
@@ -237,6 +232,26 @@ class App {
         this.ui.updateTimeDisplay(timeString);
       }
     });
+  }
+
+  /**
+   * Updates the browser's URL to make it shareable for the given route.
+   * @param {object} route - The route record from storage.
+   * @private
+   */
+  _updateShareableUrl(route) {
+    const newUrl = new URL(window.location);
+    newUrl.searchParams.delete('route_id');
+    newUrl.searchParams.delete('url');
+
+    if (route && route.sourceType === 'url') {
+      newUrl.searchParams.set('url', route.source);
+    } else if (route && route.sourceType === 'static') {
+      newUrl.searchParams.set('route_id', route.id);
+    }
+
+    window.history.pushState({ path: newUrl.toString() }, '', newUrl.toString());
+    logger.info(`Updated URL for sharing: ${newUrl.toString()}`);
   }
 
   async mergeStaticRoutes() {
@@ -434,7 +449,7 @@ class App {
     try {
       // Extract a name from the URL path
       const urlPath = new URL(url).pathname;
-      const fileName = urlPath.substring(urlPath.lastIndexOf('/') + 1) || 'URL Route';
+      const fileName = decodeURIComponent(urlPath.substring(urlPath.lastIndexOf('/') + 1)) || 'URL Route';
 
       const newRecord = RouteStorage.addRoute({
         name: fileName,
@@ -457,6 +472,18 @@ class App {
       logger.error('Failed to add GPX from URL:', error);
       alert(`Failed to add GPX from URL.\n\nError: ${error.message}`);
       this.setState('NO_ROUTE');
+    }
+  }
+
+  /**
+   * Handles clearing all stored routes and cached data.
+   */
+  async handleClearStorage() {
+    const confirmed = confirm('Are you sure you want to clear all stored routes and cached data? This will remove all routes you have added from files or URLs. This action cannot be undone. The page will be reloaded after clearing.');
+    if (confirmed) {
+      this.clearRoute();
+      await RouteStorage.clearAll();
+      window.location.reload();
     }
   }
 
@@ -513,6 +540,7 @@ class App {
    * Clears the currently loaded route and all associated data.
    */
   clearRoute() {
+    this._updateShareableUrl(null);
     logger.info('Clearing current route.');
     this.tourController.stopTour();
     this.person.reset();
@@ -674,6 +702,7 @@ class App {
     }
 
     this.generateAndDisplayFilename(points);
+    this._updateShareableUrl(route);
   }
 
   /**

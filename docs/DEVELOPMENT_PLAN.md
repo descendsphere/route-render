@@ -166,3 +166,20 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Implement a GPX coordinate precision reduction feature in `RouteStorage` to decrease the size of the `gpxString` in `localStorage`. Lat/lon are reduced to 6 decimal places and elevation to 2.
 -   [x] **Shareable URLs:**
     -   [x] Implemented logic to read a `route_id` or `url` URL parameter on page load and automatically select and load the specified route. This allows sharing of both pre-packaged and ad-hoc URL routes.
+
+## 8. Phase 8: Performance & Usability Enhancements
+
+**Goal:** Improve the application's performance and usability with intelligent, automated features.
+
+**Checklist:**
+
+-   [x] **Automatic Performance Tuning:**
+    -   [x] Re-architected the `PerformanceTuner` to use a `postRender` listener for accurate, real-time FPS monitoring.
+    -   [x] Implemented a system of user-selectable "Performance Profiles" ("Prioritize Speed", "Balanced", "Prioritize Quality") that define target FPS ranges.
+    -   [x] Created a granular, ordered "ladder" of quality presets.
+    -   [x] Implemented an "autopilot" that automatically moves up or down the quality ladder to meet the user's selected performance target.
+    -   [x] Removed `targetFrameRate` from the presets to allow for accurate performance measurement.
+-   [x] **Shareable URLs:**
+    -   [x] Implemented a central `_updateShareableUrl` method to manage the browser's URL.
+    -   [x] The URL is now automatically updated with a `?route_id=` or `?url=` parameter when a shareable route is loaded.
+    -   [x] The URL parameters are cleared when a non-shareable local file is loaded or when the route is cleared.

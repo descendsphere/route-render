@@ -12,6 +12,8 @@ This project is a web-based application for visualizing GPX track data in a rich
 
 ## Key Features
 
+*   **Automatic Performance Tuning:** The application automatically adjusts rendering quality to maintain a target frame rate based on the user's selected profile ("Prioritize Speed", "Balanced", or "Prioritize Quality").
+*   **Shareable URLs:** The page URL automatically updates to include the loaded route (e.g., `?route_id=...` or `?url=...`), making it easy to copy and share a direct link to a specific route.
 *   **State Machine Architecture:** The application is driven by a robust state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) for predictable and stable UI behavior.
 *   **Mobile-First Custom Tour Controls:** A custom control bar provides a professional, touch-friendly experience with SVG icons, including:
     *   Play/Pause and Reset.

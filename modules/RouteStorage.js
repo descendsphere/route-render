@@ -177,6 +177,21 @@ class RouteStorage {
 
     return reducedGpx;
   }
+
+  /**
+   * Clears all routes from local storage and the static asset cache.
+   */
+  static async clearAll() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      logger.info('Route library cleared from local storage.');
+      await caches.delete(CACHE_NAME);
+      logger.info('Static route cache cleared.');
+    } catch (error) {
+      logger.error('Error clearing storage:', error);
+      alert('Could not clear all storage. See console for details.');
+    }
+  }
 }
 
 export default RouteStorage;
