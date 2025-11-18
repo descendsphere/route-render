@@ -22,7 +22,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### UI/UX Enhancements
 
-- **[FEATURE] Manual Pitch Control:** Add controls to adjust the camera pitch during the tour.
 - **[UI/UX] Preset Speed/Zoom Buttons:** As an alternative to sliders, offer preset buttons for speed and zoom levels.
 
 ### Interactive Elevation Chart
@@ -41,6 +40,8 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[FEATURE] Manual Pitch Control:** Added a slider to allow the user to manually adjust the camera's pitch angle during the tour for most camera strategies.
+- **[UI/UX] Increased Max Zoom:** Increased the maximum camera distance from 20,000 meters to 50,000 meters.
 - **[FEATURE] Shareable URLs:** Implemented logic to read a `route_id` or a `url` URL parameter on page load, automatically selecting and loading the specified route. This allows sharing of both pre-packaged and ad-hoc URL routes.
 - **[FEATURE] GPX Coordinate Precision Reduction:** Implemented a function in `RouteStorage.js` that reduces the decimal precision of latitude, longitude, and elevation values within the `gpxString` before saving to `localStorage`. This significantly reduces the storage footprint with negligible impact on visual accuracy.
 - **[REFACTOR] Storage-First Architecture:** Re-architected the application to use a "storage-first" model. All routes, regardless of source (file, URL, static), are now managed by a central `RouteStorage.js` module that uses `localStorage` for persistence. This decouples data acquisition from rendering and is the foundation for multi-route management.

@@ -9,6 +9,7 @@ class TourController {
     this.speedController = new SpeedController(this.viewer.clock); // New SpeedController instance
     this.cameraStrategy = 'overhead'; // Default strategy
     this.cameraDistance = 1000; // Default distance
+    this.cameraPitch = -45; // Default pitch
     this.cameraListeners = {}; // To hold references to listeners
     this.uiTickListener = null; // To hold the UI tick listener
     this.onTick = () => {}; // Callback for UI updates
@@ -204,7 +205,7 @@ class TourController {
       const currentPos = this.person.entity.position.getValue(clock.currentTime);
       if (!Cesium.defined(currentPos)) return;
 
-      const pitch = Cesium.Math.toRadians(-30);
+      const pitch = Cesium.Math.toRadians(this.cameraPitch);
       const heading = this.viewer.camera.heading; // Keep the current heading
       const range = this.cameraDistance;
 
@@ -258,7 +259,7 @@ class TourController {
 
       // Calculate heading to complete one 360-degree rotation over the tour duration
       const heading = Cesium.Math.toRadians(tourProgress * 360);
-      const pitch = Cesium.Math.toRadians(-35); // look down at ~35°
+      const pitch = Cesium.Math.toRadians(this.cameraPitch);
       const range = this.cameraDistance; // Use the new distance property
 
       this.viewer.camera.lookAt(
@@ -340,6 +341,10 @@ class TourController {
     this.cameraDistance = distance;
     // The active camera strategy listener will automatically pick up this new value on the next frame.
     // There is no need to re-apply the strategy.
+  }
+
+  setCameraPitch(pitch) {
+    this.cameraPitch = pitch;
   }
 
   // --- Custom Controls API ---

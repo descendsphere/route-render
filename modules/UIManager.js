@@ -17,6 +17,7 @@ class UIManager {
     this.onUpdatePersonStyle = () => {};
     this.onToggleClampToGround = () => {};
     this.onUpdateCameraDistance = () => {};
+    this.onSetCameraPitch = () => {};
     this.onCustomPlayPause = () => {};
     this.onCustomRewind = () => {};
     this.onCustomReset = () => {};
@@ -48,6 +49,8 @@ class UIManager {
     this.cameraStrategyInput = document.getElementById('camera-strategy');
     this.cameraDistanceSlider = document.getElementById('camera-distance');
     this.cameraDistanceDisplay = document.getElementById('camera-distance-display');
+    this.cameraPitchSlider = document.getElementById('camera-pitch');
+    this.cameraPitchDisplay = document.getElementById('camera-pitch-display');
     this.clampToGroundInput = document.getElementById('clamp-to-ground');
     this.performancePresetInput = document.getElementById('performance-preset');
 
@@ -67,6 +70,7 @@ class UIManager {
     this.quickControlsContainer = document.getElementById('quick-controls-container');
     this.speedSliderGroup = this.speedSlider.parentElement;
     this.distanceSliderGroup = this.cameraDistanceSlider.parentElement;
+    this.pitchSliderGroup = this.cameraPitchSlider.parentElement;
 
     // Custom Tour Controls
     this.customTourControls = document.getElementById('custom-tour-controls');
@@ -179,9 +183,15 @@ class UIManager {
 
     this.cameraDistanceSlider.addEventListener('input', (event) => {
       const position = 100 - parseInt(event.target.value, 10); // Reverse the position
-      const distance = this._logValue(position, 50, 20000);
+      const distance = this._logValue(position, 50, 50000);
       this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
       this.onUpdateCameraDistance(distance);
+    });
+
+    this.cameraPitchSlider.addEventListener('input', (event) => {
+      const pitch = parseInt(event.target.value, 10);
+      this.cameraPitchDisplay.textContent = `${pitch}°`;
+      this.onSetCameraPitch(pitch);
     });
 
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
@@ -309,7 +319,12 @@ class UIManager {
 
   getCameraDistance() {
     const position = 100 - parseInt(this.cameraDistanceSlider.value, 10);
-    return this._logValue(position, 50, 20000);
+    return this._logValue(position, 50, 50000);
+  }
+
+  setPitchControlEnabled(isEnabled) {
+    this.cameraPitchSlider.disabled = !isEnabled;
+    this.pitchSliderGroup.style.opacity = isEnabled ? '1' : '0.5';
   }
 
   // --- Custom Tour Control Updaters ---
@@ -350,8 +365,10 @@ class UIManager {
       // Move sliders to quick controls and add vertical class
       this.speedSliderGroup.classList.add('vertical-slider');
       this.distanceSliderGroup.classList.add('vertical-slider');
+      this.pitchSliderGroup.classList.add('vertical-slider');
       this.quickControlsContainer.appendChild(this.speedSliderGroup);
       this.quickControlsContainer.appendChild(this.distanceSliderGroup);
+      this.quickControlsContainer.appendChild(this.pitchSliderGroup);
     }
   }
 
@@ -361,8 +378,10 @@ class UIManager {
       // Move sliders back to main panel and restore labels
       this.speedSliderGroup.classList.remove('vertical-slider');
       this.distanceSliderGroup.classList.remove('vertical-slider');
+      this.pitchSliderGroup.classList.remove('vertical-slider');
       this.tourControls.appendChild(this.speedSliderGroup);
       this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+      this.cameraStrategyControls.appendChild(this.pitchSliderGroup);
     }
   }
 

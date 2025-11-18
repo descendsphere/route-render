@@ -110,12 +110,16 @@ class App {
     this.ui.onSetSpeed = (relativeSpeed) => this.tourController.setSpeed(relativeSpeed);
     this.ui.onUpdateRouteColor = () => this.updateRouteStyle();
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
-    this.ui.onSetCameraStrategy = (strategy) => this.tourController.setCameraStrategy(strategy);
+    this.ui.onSetCameraStrategy = (strategy) => {
+      this.tourController.setCameraStrategy(strategy);
+      this.ui.setPitchControlEnabled(strategy !== 'top-down');
+    };
     this.ui.onUpdatePersonStyle = (style) => {
       this.person.updateStyle(style);
       this.performanceTuner.requestRender();
     };
     this.ui.onUpdateCameraDistance = (distance) => this.tourController.setCameraDistance(distance);
+    this.ui.onSetCameraPitch = (pitch) => this.tourController.setCameraPitch(pitch);
     this.ui.onToggleClampToGround = () => {
       if (this.currentPoints.length > 0) {
         this.updateRouteStyle();

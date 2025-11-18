@@ -183,3 +183,8 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Implemented a central `_updateShareableUrl` method to manage the browser's URL.
     -   [x] The URL is now automatically updated with a `?route_id=` or `?url=` parameter when a shareable route is loaded.
     -   [x] The URL parameters are cleared when a non-shareable local file is loaded or when the route is cleared.
+-   [x] **Manual Pitch Control:**
+    -   [x] Added a "Pitch" slider to the UI to allow users to control the camera's pitch angle.
+    -   [x] The slider is enabled for the "Overhead" and "Third-Person" camera strategies and disabled for the "Top-Down" strategy.
+-   [x] **Increased Max Zoom:**
+    -   [x] Increased the maximum camera distance from 20000 meters to 50000 meters.

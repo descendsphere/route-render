@@ -203,3 +203,22 @@ Two URL parameters are used to load routes:
 *   It uses the `window.history.pushState()` API to update the URL in the address bar without causing a page reload.
 *   The logic correctly distinguishes between `static` and `url` routes to generate the appropriate URL parameter.
 *   Routes loaded from local files (`sourceType: 'file'`) are not shareable, so the URL parameters are cleared when they are active.
+
+## 10. Manual Pitch Control
+
+To give users more control over the camera, a manual pitch control feature has been implemented.
+
+### 10.1. UI Control
+*   A new "Pitch" slider has been added to the "Camera" section of the side panel.
+*   The slider has a range from -90° (looking straight down) to 0° (looking at the horizon).
+*   When the side panel is collapsed, the pitch slider moves to the "quick controls" area on the left and becomes a vertical slider.
+
+### 10.2. Implementation
+*   The `UIManager` has been updated to manage the new slider, including its movement between the side panel and the quick controls.
+*   A new `onSetCameraPitch` callback has been added to the `UIManager` to communicate the slider's value to the `App` controller.
+*   The `TourController` has a new `cameraPitch` property to store the current pitch value.
+*   The camera strategy functions in the `TourController` have been updated to use the `cameraPitch` property when calculating the camera's orientation.
+
+### 10.3. Strategy-Specific Behavior
+*   The pitch control is only enabled for the "Overhead" and "Third-Person" camera strategies.
+*   When the "Top-Down" strategy is selected, the pitch slider is disabled, and the camera's pitch is locked to -90° to provide a true top-down view.

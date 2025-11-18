@@ -37,6 +37,7 @@ This project is a web-based application for visualizing GPX track data in a rich
     *   Fetches and displays nearby Points of Interest (POIs) from OpenStreetMap.
     *   Suggests a descriptive filename based on the route's start/end locations.
 *   **Customization:** Allows real-time customization of route color/width and person icon color/size.
+*   **Manual Pitch Control:** A slider allows the user to manually adjust the camera's pitch angle during the tour for most camera strategies.
 
 ## License
 
