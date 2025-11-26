@@ -16,7 +16,6 @@ class TourController {
 
     this.cameraStrategies = {
       'third-person': this._activateTrackedCamera.bind(this),
-      'top-down': this._activateFixedCamera.bind(this),
       'overhead': this._activateOverheadCamera.bind(this),
     };
   }
@@ -219,27 +218,7 @@ class TourController {
     this.cameraListeners['third-person'] = () => this.viewer.clock.onTick.removeEventListener(listener);
   }
 
-  /**
-   * Activates the Fixed Position (Top-Down) camera.
-   * @private
-   */
-  _activateFixedCamera() {
-    this._cleanupCamera();
-    const cameraPosition = Cesium.Cartesian3.fromDegrees(
-      Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).longitude),
-      Cesium.Math.toDegrees(Cesium.Cartographic.fromCartesian(this.routeCenter).latitude),
-      this.maxRouteElevation + this.cameraDistance // Use the new distance property
-    );
 
-    this.viewer.camera.setView({
-      destination: cameraPosition,
-      orientation: {
-        heading: Cesium.Math.toRadians(0),
-        pitch: Cesium.Math.toRadians(-90),
-        roll: 0
-      }
-    });
-  }
 
   /**
    * Activates the Overhead / Dynamic camera.

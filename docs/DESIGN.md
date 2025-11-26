@@ -138,10 +138,7 @@ The `TourController` manages a dictionary of camera strategy functions. When a s
 ### 6.1. Third-Person Follow
 *   **Implementation:** A listener on the `viewer.clock.onTick` event that uses `viewer.camera.lookAt()`.
 
-### 6.2. Top-Down Tracking
-*   **Implementation:** A single call to `viewer.camera.setView()`. The camera does not move during the tour.
-
-### 6.3. Overhead Orbit
+### 6.2. Overhead Orbit
 *   **Implementation:** A listener on the `viewer.scene.postUpdate` event. The heading is calculated based on the tour's percentage complete to ensure a smooth, full rotation.
 
 ## 7. Performance Tuning Architecture
@@ -220,5 +217,4 @@ To give users more control over the camera, a manual pitch control feature has b
 *   The camera strategy functions in the `TourController` have been updated to use the `cameraPitch` property when calculating the camera's orientation.
 
 ### 10.3. Strategy-Specific Behavior
-*   The pitch control is only enabled for the "Overhead" and "Third-Person" camera strategies.
-*   When the "Top-Down" strategy is selected, the pitch slider is disabled, and the camera's pitch is locked to -90° to provide a true top-down view.
+*   The pitch control is enabled for the "Overhead" and "Third-Person" camera strategies.

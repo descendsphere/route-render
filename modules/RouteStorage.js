@@ -106,6 +106,7 @@ class RouteStorage {
 
     // Only add gpxString if it's provided (for file-based routes)
     if (gpxString) {
+      newRecord.originalGpxString = gpxString; // Preserve original
       newRecord.gpxString = this._reduceGpxPrecision(gpxString);
     }
 
@@ -139,6 +140,11 @@ class RouteStorage {
       return null;
     }
 
+    // If gpxString is part of the update, ensure its precision is reduced.
+    if (updatedData.gpxString) {
+      updatedData.gpxString = this._reduceGpxPrecision(updatedData.gpxString);
+    }
+
     // Merge the new data into the existing record
     const updatedRoute = { ...routes[routeIndex], ...updatedData };
     routes[routeIndex] = updatedRoute;
@@ -167,7 +173,7 @@ class RouteStorage {
     });
 
     // Reduce precision of content within <ele> tags to 2 decimal places
-    reducedGpx = reducedGpx.replace(/(<ele>)(-?\d+\.\d+)(<\/ele>)/g, (match, p1, p2, p3) => {
+    reducedGpx = reducedGpx.replace(/(<ele>)(-?\d+(?:\.\d+)?)(<\/ele>)/g, (match, p1, p2, p3) => {
       const value = parseFloat(p2).toFixed(2);
       return `${p1}${value}${p3}`;
     });

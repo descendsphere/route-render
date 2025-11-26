@@ -7,6 +7,7 @@ import Person from './modules/Person.js';
 import UIManager from './modules/UIManager.js';
 import PerformanceTuner from './modules/PerformanceTuner.js';
 import RouteStorage from './modules/RouteStorage.js';
+import GpxGenerator from './modules/GpxGenerator.js';
 
 class App {
   constructor() {
@@ -92,8 +93,9 @@ class App {
     });
 
     logger.info('Initializing application.');
-    this.initCesium();
+    await this.initCesium();
     this.performanceTuner = new PerformanceTuner(this.viewer); // Instantiate PerformanceTuner
+
 
     this.person = new Person(this.viewer);
     this.person.create();
@@ -112,7 +114,6 @@ class App {
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
     this.ui.onSetCameraStrategy = (strategy) => {
       this.tourController.setCameraStrategy(strategy);
-      this.ui.setPitchControlEnabled(strategy !== 'top-down');
     };
     this.ui.onUpdatePersonStyle = (style) => {
       this.person.updateStyle(style);
@@ -326,46 +327,55 @@ class App {
   /**
    * Initializes the Cesium viewer.
    */
-  initCesium() {
+  async initCesium() {
     logger.info('Initializing Cesium viewer.');
     // Note: Using a default access token for Cesium Ion. For a production app, you should create your own token.
     Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI1Njg3Zjk2Yy02ZjM4LTRkM2QtYjY4MC1kN2ZkNWU4N2M3NjYiLCJpZCI6MzU1Mzk4LCJpYXQiOjE3NjIxNzc1OTR9.bWw5GgYYaFW-JZ2AJr6GHBEZq4tohQF8qea5FJ7eaao';
 
     const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-    const terrainProvider = Cesium.Terrain.fromWorldTerrain({
-      requestWaterMask: !isMobile, // Disable water mask on mobile for performance
-      requestVertexNormals: !isMobile, // Disable lighting on mobile for performance
-    });
+    try {
+      const terrainProvider = await Cesium.createWorldTerrainAsync({
+        requestWaterMask: !isMobile, // Disable water mask on mobile for performance
+        requestVertexNormals: !isMobile, // Disable lighting on mobile for performance
+      });
 
-    this.viewer = new Cesium.Viewer('cesiumContainer', {
-      terrain: terrainProvider,
-      animation: false, // Always use custom animation controls
-      timeline: false, // Always use custom timeline controls
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      contextOptions: {
-        requestWebgl2: true,
-        webgl: {
-		  //willReadFrequently: true,
-          powerPreference: "low-power"
-        }
-      },
-      msaaSamples: 1, // Disable MSAA (default when off)
-      // Enable on-demand rendering
-      requestRenderMode: true,
-      maximumRenderTimeChange: Infinity,
+      this.viewer = new Cesium.Viewer('cesiumContainer', {
+        terrainProvider: terrainProvider,
+        animation: false, // Always use custom animation controls
+        timeline: false, // Always use custom timeline controls
+        geocoder: false,
+        homeButton: false,
+        sceneModePicker: false,
+        contextOptions: {
+          requestWebgl2: true,
+          webgl: {
+            //willReadFrequently: true,
+            powerPreference: "low-power"
+          }
+        },
+        msaaSamples: 1, // Disable MSAA (default when off)
+        // Enable on-demand rendering
+        requestRenderMode: true,
+        maximumRenderTimeChange: Infinity,
 
-      //skyBox: false,
-      //skyAtmosphere: false,
-      sun: false,
-      moon: false,
-      shadows: false, // No realtime dynamic shadows
-      infoBox: false,
-      selectionIndicator: false,
-      //fullscreenButton: false
-    });
+        //skyBox: false,
+        //skyAtmosphere: false,
+        sun: false,
+        moon: false,
+        shadows: false, // No realtime dynamic shadows
+        infoBox: false,
+        selectionIndicator: false,
+        //fullscreenButton: false
+      });
+    } catch (error) {
+        logger.error("Failed to create terrain provider. Terrain will be disabled.", error);
+        // Fallback to a viewer without terrain
+        this.viewer = new Cesium.Viewer('cesiumContainer', {
+            animation: false, timeline: false, geocoder: false, homeButton: false, sceneModePicker: false
+        });
+    }
+
 
     // Handle high DPI displays
     if (isMobile) {
@@ -544,6 +554,7 @@ class App {
    * Clears the currently loaded route and all associated data.
    */
   clearRoute() {
+    this.ui.setClampToGroundLocked(false); // Ensure lock is released
     this._updateShareableUrl(null);
     logger.info('Clearing current route.');
     this.tourController.stopTour();
@@ -642,7 +653,7 @@ class App {
     } else {
       logger.warn('GPX file does not have elevation data. Automatic enrichment is required.');
       alert('This GPX file does not have elevation data. We will now fetch it automatically. This may take a moment.');
-      this.enrichAndRenderRoute(points);
+      this.enrichAndRenderRoute(points, route);
     }
   }
 
@@ -669,7 +680,6 @@ class App {
     this.routeCenter = boundingSphere.center;
     logger.info('routeCenter:' + this.routeCenter);
 
-    // Calculate max elevation for top-down camera
     let maxElevation = 0;
     points.forEach(p => {
       if (p.ele > maxElevation) maxElevation = p.ele;
@@ -698,7 +708,7 @@ class App {
     this.setState('ROUTE_LOADED');
 
     // Check if POIs are already stored, otherwise fetch them.
-    if (route.pois && route.pois.length > 0) {
+    if (route && route.pois && route.pois.length > 0) {
       logger.info(`Rendering ${route.pois.length} POIs from local storage.`);
       this.poiService.renderPois(route.pois, this.poisAreVisible);
     } else {
@@ -758,31 +768,43 @@ class App {
   /**
    * Enriches 2D points with elevation data and then renders the route.
    * @param {Array<object>} points - An array of points with lon and lat properties.
+   * @param {object} route - The route record from storage.
    */
-  async enrichAndRenderRoute(points) {
+  async enrichAndRenderRoute(points, route) {
     this.setState('LOADING');
-    const positions2D = Cesium.Cartesian3.fromDegreesArray(
-        points.flatMap(p => [p.lon, p.lat])
-    );
+    
+    try {
+      // 1. Create an array of Cartographic positions.
+      const cartographicPositions = points.map(p => Cesium.Cartographic.fromDegrees(p.lon, p.lat));
 
-	try {
-		const updatedPositions = await Cesium.sampleTerrainMostDetailed(this.viewer.terrainProvider, positions2D);
-		const enrichedPoints = updatedPositions.map((position, i) => {
-			const cartographic = Cesium.Cartographic.fromCartesian(position);
-			return {
-				lon: Cesium.Math.toDegrees(cartographic.longitude),
-				lat: Cesium.Math.toDegrees(cartographic.latitude),
-				ele: cartographic.height,
-			};
-		});
+      // 2. Sample the terrain.
+      const updatedCartographics = await Cesium.sampleTerrainMostDetailed(this.viewer.scene.terrainProvider, cartographicPositions);
 
-		logger.info('Elevation data enriched successfully.');
-		this.renderGpx(enrichedPoints);
+      // 3. Create the final enriched points.
+      const enrichedPoints = points.map((originalPoint, index) => ({
+        ...originalPoint,
+        ele: updatedCartographics[index].height,
+      }));
 
-	} catch (error) {
-		logger.error('Error during terrain sampling:', error);
-		this.setState('NO_ROUTE');
-	}  }
+      logger.info('Elevation data enriched successfully.');
+
+      // Generate the new GPX string and save it back to storage
+      const newGpxString = GpxGenerator.generate(enrichedPoints, route.name);
+      RouteStorage.updateRoute(route.id, { gpxString: newGpxString });
+
+      this.ui.setClampToGroundLocked(false);
+      this.renderRoute(enrichedPoints, route);
+
+    } catch (error) {
+      logger.error('Error during terrain sampling:', error);
+      alert('Could not fetch elevation data. The route will be displayed clamped to the ground.');
+      this.ui.setClampToGroundLocked(true);
+      // We have to set the clamp to ground checkbox to true before rendering
+      // because renderRoute uses the value from the checkbox.
+      this.ui.clampToGroundInput.checked = true;
+      this.renderRoute(points, route);
+    }
+  }
 
   /**
    * Updates only the style of the route polyline (color, width, clamp).

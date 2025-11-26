@@ -94,7 +94,6 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Add loading indicators for all asynchronous operations.
 -   [x] **Camera Strategy Selection:**
     -   [x] Implement "Third-Person Follow" camera strategy.
-    -   [x] Implement "Top-Down Tracking" camera strategy.
     -   [x] Implement "First-Person (Over-the-Shoulder)" camera strategy.
     -   [x] Implement "Overhead Orbit" camera strategy.
     -   [x] Add a UI dropdown selector for camera strategies.
@@ -137,6 +136,7 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] Ensure all time displays (labels, custom UI) are consistently formatted (`yyyy-MM-dd HH:mm:ss`) and use the user's local time.
 -   [x] **Code & Documentation Cleanup:**
     -   [x] Remove the "First-Person" camera view to simplify the UI.
+    -   [x] Remove the "Top-Down" camera view to simplify the UI.
     -   [x] Update all project documentation (`README.md`, `DESIGN.md`, etc.) to reflect the new architecture and features.
     -   [x] Add `LICENSE` and `NOTICE.md` files to ensure full open-source license compliance.
 
@@ -185,6 +185,5 @@ This document outlines the iterative development plan for the GPX 3D Route Rende
     -   [x] The URL parameters are cleared when a non-shareable local file is loaded or when the route is cleared.
 -   [x] **Manual Pitch Control:**
     -   [x] Added a "Pitch" slider to the UI to allow users to control the camera's pitch angle.
-    -   [x] The slider is enabled for the "Overhead" and "Third-Person" camera strategies and disabled for the "Top-Down" strategy.
 -   [x] **Increased Max Zoom:**
     -   [x] Increased the maximum camera distance from 20000 meters to 50000 meters.

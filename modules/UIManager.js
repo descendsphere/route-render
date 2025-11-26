@@ -322,6 +322,10 @@ class UIManager {
     return this._logValue(position, 50, 50000);
   }
 
+  setClampToGroundLocked(isLocked) {
+    this.clampToGroundInput.disabled = isLocked;
+  }
+
   setPitchControlEnabled(isEnabled) {
     this.cameraPitchSlider.disabled = !isEnabled;
     this.pitchSliderGroup.style.opacity = isEnabled ? '1' : '0.5';
