@@ -36,3 +36,6 @@ commit_message.txt
 # Firebase CLI configuration files
 .firebaserc
 .firebase/
+
+# Gemini CLI chat history files
+chat.share.*

@@ -19,14 +19,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
     -   When the state transitions to `TOUR_PLAYING`, set `viewer.scene.screenSpaceCameraController.enableCollisionDetection = true`.
     -   When the state transitions away from `TOUR_PLAYING` (e.g., to `TOUR_PAUSED` or `ROUTE_LOADED`), revert `enableCollisionDetection` to `false` if the device is mobile.
 
-### Km-effort Integration
-
-- **[EPIC] Km-effort Integration:**
-  - **[REFACTOR] Calculate Km-effort:** Create a new method in `StatisticsCalculator.js` that processes the entire route to calculate the cumulative Km-effort at each point.
-  - **[FEATURE] Km-effort Route Coloring:** Implement a new color scheme that colors the route polyline based on the cumulative Km-effort.
-  - **[FEATURE] Km-effort Person Label:** Add the current cumulative Km-effort to the "Person" entity's label during tour playback.
-  - **[FEATURE] Display Total Km-effort:** Show the total Km-effort for the entire route in the main statistics panel.
-
 ### UI/UX Enhancements
 
 - **[FEATURE] Preset Speed/Zoom Buttons:** As an alternative to sliders, offer preset buttons for speed and zoom levels.
@@ -94,6 +86,14 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 ---
 
 ### Completed Items
+
+- **[EPIC] Performance Analysis & Simulation:** Implemented a comprehensive analysis suite for route planning and post-activity review.
+  - **[FEATURE] Detailed Statistics:** Calculates and displays total distance, elevation gain, Km-effort, Est. Calories, Planned Time, and for timestamped routes, Total Duration and Average Speed/Vertical Speed.
+  - **[FEATURE] Live Performance Dashboard:** The traveler label now shows a rich, context-aware dashboard. For timestamped routes, it displays a real-time "Actual vs. Planned" comparison for Speed, Vertical Speed, and Km-effort Rate.
+  - **[FEATURE] Simulation & Planning:** Added an "Athlete Profile" for user-input targets (weight, speed, etc.). The application now generates a full performance plan for routes without timestamps, including a variable-speed timeline based on a simplified Tobler's hiking function.
+  - **[FEATURE] Refuel Markers:** Displays markers on the route at projected calorie expenditure intervals.
+  - **[REFACTOR] Advanced Smoothing:** Replaced initial instantaneous calculations with a smoother, more accurate Exponential Moving Average (EMA) for all live rate metrics (`Speed`, `V.Speed`, `Km-e Rate`).
+  - **[REFACTOR] Standardized Architecture:** Refactored the analysis pipeline for robustness, renamed `TimeSimulator` to `PerformancePlanner`, and standardized terminology (`Target`/`Planned`/`Estimated`) across the codebase.
 
 - **[REFACTOR] Persistent & Robust Elevation Enrichment:**
   - **Problem:** When the app enriches a 2D GPX file with elevation data, this data is not saved. It must be re-fetched on every load, which is inefficient. Furthermore, the "Download GPX" feature would not have access to this enriched data if it's not in memory.

@@ -22,27 +22,34 @@ class TourController {
 
   /**
    * Prepares the cinematic tour by setting up the clock and position properties.
-   * @param {Array<object>} points - An array of points with lon, lat, and ele properties.
+   * @param {Array<object>} performanceData - An array of points with lon, lat, ele, and time properties.
    */
-  prepareTour(points, routeCenter, maxRouteElevation) {
+  prepareTour(performanceData, routeCenter, maxRouteElevation) {
     logger.info('prepareTour called');
     this.stopTour(); // Stop any existing tour and clear camera settings
 
     this.routeCenter = routeCenter;
     this.maxRouteElevation = maxRouteElevation;
 
-    const hasNativeTimestamps = points.length > 0 && points[0].time;
-    if (!hasNativeTimestamps) {
-      logger.warn('No timestamps found. Synthesizing time data based on constant speed.');
-      points = this._synthesizeTimestamps(points);
-    }
+    const hasNativeTimestamps = performanceData.length > 0 && performanceData[0].time;
+    let points = performanceData;
 
     const personPositionProperty = new Cesium.SampledPositionProperty();
     let startTime = null;
     let stopTime = null;
 
+    // Use a fixed start time for synthetic routes for consistency
+    const syntheticBaseTime = Cesium.JulianDate.fromIso8601("2025-01-01T00:00:00Z");
+
     points.forEach(p => {
-      const julianDate = Cesium.JulianDate.fromDate(p.time);
+      let julianDate;
+      if (hasNativeTimestamps) {
+        julianDate = Cesium.JulianDate.fromDate(p.time);
+      } else {
+        // Use projected time in seconds, add it to a consistent base time
+        julianDate = Cesium.JulianDate.addSeconds(syntheticBaseTime, p.projectedTime, new Cesium.JulianDate());
+      }
+      
       const personCartesian = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
 
       personPositionProperty.addSample(julianDate, personCartesian);
@@ -121,33 +128,6 @@ class TourController {
     };
     this.viewer.clock.onTick.addEventListener(onTickListener);
     this.cameraListeners['ui-tick'] = () => this.viewer.clock.onTick.removeEventListener(onTickListener);
-  }
-
-  /**
-   * Generates synthetic timestamps for a route based on a constant speed.
-   * @param {Array<object>} points - The array of points without time data.
-   * @returns {Array<object>} A new array of points with a `time` property added.
-   * @private
-   */
-  _synthesizeTimestamps(points) {
-    const constantSpeedMetersPerSecond = 5;
-    let syntheticTime = Cesium.JulianDate.now();
-    let lastPosition = null;
-
-    return points.map(p => {
-      const newPoint = { ...p };
-      const currentPosition = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
-
-      if (lastPosition) {
-        const distance = Cesium.Cartesian3.distance(lastPosition, currentPosition);
-        const timeElapsed = distance / constantSpeedMetersPerSecond;
-        Cesium.JulianDate.addSeconds(syntheticTime, timeElapsed, syntheticTime);
-      }
-
-      newPoint.time = Cesium.JulianDate.toDate(syntheticTime);
-      lastPosition = currentPosition;
-      return newPoint;
-    });
   }
 
   /**

@@ -8,6 +8,8 @@ import UIManager from './modules/UIManager.js';
 import PerformanceTuner from './modules/PerformanceTuner.js';
 import RouteStorage from './modules/RouteStorage.js';
 import GpxGenerator from './modules/GpxGenerator.js';
+import EnergyCalculator from './modules/EnergyCalculator.js';
+import PerformancePlanner from './modules/PerformancePlanner.js';
 
 class App {
   constructor() {
@@ -24,6 +26,10 @@ class App {
     this.routes = []; // To cache routes from storage
     this.activeRouteId = null; // To track the currently loaded route
     this.poiService = null; // To hold the PoiService instance
+    this.tourData = null; // This will hold the final, unified data for the tour
+    this.hasNativeTimestamps = false;
+    this.actualPerformanceStats = null;
+    this.baseRouteStats = null;
   }
 
   /**
@@ -132,6 +138,7 @@ class App {
     this.ui.onUrlLoad = (url) => this.handleUrlLoad(url);
     this.ui.onRouteSelected = (routeId) => this.handleRouteSelect(routeId);
     this.ui.onClearStorage = () => this.handleClearStorage();
+    this.ui.onAthleteProfileChange = () => this.handleAnalysisUpdate();
 
     // Custom tour controls callbacks
     this.ui.onCustomPlayPause = () => {
@@ -212,25 +219,79 @@ class App {
 
     // Add a listener to sync our state with the Cesium clock
     this.viewer.scene.postRender.addEventListener(() => {
-      if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
+      if ((this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') && this.tourController.tour) {
         this.syncWithClock();
 
-        // Update time displays
         const currentTime = this.viewer.clock.currentTime;
-        const jsDate = Cesium.JulianDate.toDate(currentTime);
+        const tourStartTime = this.tourController.tour.startTime;
+        let timeString;
+        let labelText;
+        
+        const elapsedTimeSeconds = Cesium.JulianDate.secondsDifference(currentTime, tourStartTime);
+        const elapsedHours = Math.floor(elapsedTimeSeconds / 3600).toString().padStart(2, '0');
+        const elapsedMinutes = Math.floor((elapsedTimeSeconds % 3600) / 60).toString().padStart(2, '0');
+        const elapsedSeconds = Math.floor(elapsedTimeSeconds % 60).toString().padStart(2, '0');
+        const elapsedTimeString = `${elapsedHours}:${elapsedMinutes}:${elapsedSeconds}`;
 
-        const year = jsDate.getFullYear();
-        const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
-        const day = jsDate.getDate().toString().padStart(2, '0');
-        const hours = jsDate.getHours().toString().padStart(2, '0');
-        const minutes = jsDate.getMinutes().toString().padStart(2, '0');
-        const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+        if (this.hasNativeTimestamps) {
+            // --- ACTUAL PERFORMANCE MODE ---
+            const jsDate = Cesium.JulianDate.toDate(currentTime);
+            const dateString = `${jsDate.getFullYear()}-${(jsDate.getMonth() + 1).toString().padStart(2, '0')}-${jsDate.getDate().toString().padStart(2, '0')}`;
+            const timeOnlyString = `${jsDate.getHours().toString().padStart(2, '0')}:${jsDate.getMinutes().toString().padStart(2, '0')}:${jsDate.getSeconds().toString().padStart(2, '0')}`;
+            timeString = `${dateString} ${timeOnlyString}`;
 
-        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            if (this.tourData && this.tourData.length > 0) {
+                const currentIndex = this.tourData.findIndex(p => p.time && (Cesium.JulianDate.fromDate(p.time) > currentTime));
+                const currentPoint = this.tourData[Math.max(0, currentIndex - 1)];
+
+                if(currentPoint) {
+                    const speedLabel = `Speed (Act/Plan): ${currentPoint.actualSmoothedSpeedKmh.toFixed(1)} / ${currentPoint.plannedSmoothedSpeed.toFixed(1)} km/h`;
+                    const ascentLabel = `V.Speed (Act/Plan): ${Math.round(currentPoint.actualSmoothedElevationRate / 10) * 10} / ${Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10} m/h`;
+                    const kmEffortLabel = `Km-e Rate (Act/Plan): ${currentPoint.actualSmoothedKmEffortRate.toFixed(1)} / ${currentPoint.plannedSmoothedKmEffortRate.toFixed(1)} /h`;
+
+                    labelText = `Elapsed: ${elapsedTimeString}\n` + 
+                                `Dist: ${(currentPoint.cumulativeDistance / 1000).toFixed(3)}km\n` + 
+                                `Ascent: ${(currentPoint.cumulativeElevationGain).toFixed(0)}m\n` + 
+                                `Kcal: ${currentPoint.cumulativeKcal.toFixed(0)}\n` + 
+                                `--------------\n` + 
+                                `${speedLabel}\n${ascentLabel}\n${kmEffortLabel}`;
+                } else {
+                    labelText = timeString;
+                }
+            } else {
+                labelText = timeString;
+            }
+
+        } else if (this.tourData && this.tourData.length > 0) {
+            // --- SIMULATED PERFORMANCE MODE ---
+            timeString = elapsedTimeString;
+            
+            const currentPoint = this.tourData.find(p => p.projectedTime >= elapsedTimeSeconds);
+            
+            if (currentPoint) {
+                labelText = `Elapsed: ${timeString}\n` + 
+                            `Dist: ${(currentPoint.cumulativeDistance / 1000).toFixed(3)}km\n` + 
+                            `Ascent: ${(currentPoint.cumulativeElevationGain).toFixed(0)}m\n` + 
+                            `Kcal: ${currentPoint.cumulativeKcal.toFixed(0)}\n` + 
+                            `--------------\n` + 
+                            `Speed: ${currentPoint.plannedSmoothedSpeed.toFixed(1)} km/h\n` + 
+                            `V.Speed: ${Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10} m/h\n` + 
+                            `Km-e Rate: ${currentPoint.plannedSmoothedKmEffortRate.toFixed(1)}/h`;
+            } else {
+                labelText = timeString;
+            }
+        } else {
+            // Fallback for initialization race conditions
+            const jsDate = Cesium.JulianDate.toDate(currentTime);
+            const dateString = `${jsDate.getFullYear()}-${(jsDate.getMonth() + 1).toString().padStart(2, '0')}-${jsDate.getDate().toString().padStart(2, '0')}`;
+            const timeOnlyString = `${jsDate.getHours().toString().padStart(2, '0')}:${jsDate.getMinutes().toString().padStart(2, '0')}:${jsDate.getSeconds().toString().padStart(2, '0')}`;
+            timeString = `${dateString} ${timeOnlyString}`;
+            labelText = timeString;
+        }
 
         // Update person label
         if (this.person.entity && this.person.entity.label) {
-          this.person.entity.label.text = timeString;
+          this.person.entity.label.text = labelText;
         }
 
         // Update custom UI display
@@ -502,6 +563,116 @@ class App {
   }
 
   /**
+   * Handles the calculation and display of energy-related metrics and refuel markers.
+   */
+  handleAnalysisUpdate() {
+    if (!this.currentRouteAnalysisData || this.currentRouteAnalysisData.length === 0) {
+      logger.warn('handleAnalysisUpdate called without base analysis data.');
+      return;
+    }
+
+    const userWeightKg = this.ui.getAthleteWeight();
+    const refuelThresholdKcal = this.ui.getRefuelThreshold();
+    const targetSpeedKmh = this.ui.getTargetSpeed();
+    const degradation = this.ui.getDegradation();
+    const restPerRefuelMin = this.ui.getRestTime();
+
+    if (isNaN(userWeightKg) || userWeightKg <= 0 || isNaN(refuelThresholdKcal) || refuelThresholdKcal <= 0) {
+      alert('Please enter a valid weight and refuel threshold.');
+      return;
+    }
+
+    let processedData = this.currentRouteAnalysisData;
+
+    // --- 1. Performance Analysis (if applicable) ---
+    if (this.hasNativeTimestamps) {
+      this.actualPerformanceStats = StatisticsCalculator.analyzePerformance(processedData);
+      processedData = this.actualPerformanceStats.augmentedPerPointData;
+    } else {
+      this.actualPerformanceStats = null; // Clear any previous stats
+    }
+
+    // --- 2. Energy Calculation ---
+    const energyProfile = EnergyCalculator.calculateEnergyProfile(
+      processedData,
+      userWeightKg
+    );
+    processedData = energyProfile.perPointData;
+    
+    const refuelPoints = EnergyCalculator.findRefuelPoints(
+      processedData,
+      refuelThresholdKcal
+    );
+
+    // --- 3. Time Simulation ---
+    const planProfile = PerformancePlanner.planPerformanceProfile(
+      processedData,
+      targetSpeedKmh,
+      degradation,
+      refuelPoints,
+      restPerRefuelMin
+    );
+    
+    // --- 4. Finalize Data ---
+    // This is the final, unified data for the tour and UI rendering
+    this.tourData = planProfile.perPointData; 
+
+    // --- 5. Final UI Update ---
+    this.ui.updateStatsContent({
+      ...this.baseRouteStats,
+      ...this.actualPerformanceStats,
+      totalCalories: energyProfile.totalKcal.toFixed(0),
+      totalPlannedTime: planProfile.totalPlannedTime,
+    });
+
+    this.clearRefuelMarkers();
+    this.renderRefuelMarkers(refuelPoints);
+
+    // --- 6. Prepare Tour ---
+    this.tourController.prepareTour(this.tourData, this.routeCenter, this.maxRouteElevation);
+
+    this.performanceTuner.requestRender();
+  }
+
+  /**
+   * Renders refuel markers on the Cesium viewer.
+   * @param {Array<object>} refuelPoints - An array of point objects where refueling should happen.
+   */
+  renderRefuelMarkers(refuelPoints) {
+    refuelPoints.forEach((point, index) => {
+      this.viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(point.lon, point.lat), // No height
+        billboard: {
+          image: 'assets/refuel_marker.svg',
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          scale: 1,
+        },
+        label: {
+          text: `Refuel ${index + 1} (${point.cumulativeKcal.toFixed(0)} kcal)`,
+          showBackground: true,
+          backgroundColor: new Cesium.Color(0.1, 0.4, 0.1, 0.7),
+          font: '12pt sans-serif',
+          verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+          pixelOffset: new Cesium.Cartesian2(0, -30),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY
+        },
+        gpxEntity: true, // Tag for easy removal
+        refuelMarker: true, // Custom tag for specific refuel marker removal
+      });
+    });
+  }
+
+  /**
+   * Clears all refuel markers from the Cesium viewer.
+   */
+  clearRefuelMarkers() {
+    const markersToRemove = this.viewer.entities.values.filter(entity => entity.refuelMarker);
+    markersToRemove.forEach(entity => this.viewer.entities.remove(entity));
+  }
+
+  /**
    * Handles the selection of a route from the library dropdown.
    * @param {string} routeId - The ID of the selected route.
    */
@@ -569,6 +740,7 @@ class App {
     const entitiesToRemove = this.viewer.entities.values.filter(entity => entity.gpxEntity);
     entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
     this.poiService.clearPoisFromViewer(); // Delegate to service
+    this.clearRefuelMarkers(); // New: Clear refuel markers
 
     this.currentPoints = [];
     this.setState('NO_ROUTE');
@@ -644,8 +816,9 @@ class App {
       });
     }
 
-    // Check if the GPX file has elevation data.
+    // Check if the GPX file has elevation and time data.
     const hasElevation = points.every(p => p.ele !== undefined && p.ele !== null);
+    this.hasNativeTimestamps = points.every(p => p.time !== undefined && p.time !== null);
 
     if (hasElevation) {
       logger.info('GPX file has elevation data.');
@@ -678,9 +851,8 @@ class App {
 
     const boundingSphere = Cesium.BoundingSphere.fromPoints(positions);
     this.routeCenter = boundingSphere.center;
-    logger.info('routeCenter:' + this.routeCenter);
 
-    let maxElevation = 0;
+    let maxElevation = 0; // Keeping this for now as it's used by TourController
     points.forEach(p => {
       if (p.ele > maxElevation) maxElevation = p.ele;
     });
@@ -689,12 +861,11 @@ class App {
     this.viewer.zoomTo(this.routeEntity);
     logger.info('Route rendered successfully.');
 
-    // Calculate and display statistics
-    const stats = StatisticsCalculator.calculate(points);
-    this.ui.updateStatsContent(stats);
-
-    // Prepare the tour for playback
-    this.tourController.prepareTour(points, this.routeCenter, this.maxRouteElevation);
+    // Calculate and display comprehensive statistics
+    this.baseRouteStats = StatisticsCalculator.calculate(points);
+    this.currentRouteAnalysisData = this.baseRouteStats.perPointData; // Store rich per-point data
+    
+    this.handleAnalysisUpdate(); // New: Auto-calculate energy and time on load
 
     // Use a one-time postRender listener to show the person.
     // This ensures the engine has had a frame to process the new position

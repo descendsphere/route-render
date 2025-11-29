@@ -146,6 +146,52 @@
           <button id="clear-storage-button">Clear All Stored Data</button>
         </div>
       </div>
+
+      <div id="athlete-profile-controls" class="control-group" style="display: none;">
+        <h4 class="collapsible-header">Athlete Profile</h4>
+        <div class="collapsible-content">
+          <div class="number-input-group">
+            <label>Weight (kg):</label>
+            <div class="number-input-widget">
+              <button id="athlete-weight-decrement" class="adjust-button">-</button>
+              <span id="athlete-weight-display">60</span>
+              <button id="athlete-weight-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Refuel (kcal):</label>
+            <div class="number-input-widget">
+              <button id="refuel-threshold-decrement" class="adjust-button">-</button>
+              <span id="refuel-threshold-display">600</span>
+              <button id="refuel-threshold-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Target Speed (km/h):</label>
+            <div class="number-input-widget">
+              <button id="target-speed-decrement" class="adjust-button">-</button>
+              <span id="target-speed-display">4.5</span>
+              <button id="target-speed-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Perf. Degradation (%/hr):</label>
+            <div class="number-input-widget">
+              <button id="degradation-decrement" class="adjust-button">-</button>
+              <span id="degradation-display">5</span>
+              <button id="degradation-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Rest per Refuel (min):</label>
+            <div class="number-input-widget">
+              <button id="rest-time-decrement" class="adjust-button">-</button>
+              <span id="rest-time-display">5</span>
+              <button id="rest-time-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="quick-controls-container">

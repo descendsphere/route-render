@@ -3,13 +3,14 @@ import logger from './Logger.js';
 class UIManager {
   constructor(viewer) {
     this.viewer = viewer;
+    this.currentStats = {}; // New: To hold the last stats object
 
     // Callbacks to be set by the App class
     this.onFileSelected = () => {};
     this.onPlayTour = () => {};
     this.onStopTour = () => {};
     this.onZoomToRoute = () => {};
-    this.onResetStyle = () => {}; // New callback
+    this.onResetStyle = () => {};
     this.onSetSpeed = () => {};
     this.onUpdateRouteColor = () => {};
     this.onUpdateRouteWidth = () => {};
@@ -24,18 +25,19 @@ class UIManager {
     this.onCustomScrub = () => {};
     this.onCustomZoom = () => {};
     this.onCustomResetStyle = () => {};
-    this.onTogglePoiVisibility = () => {}; // New callback
+    this.onTogglePoiVisibility = () => {};
     this.onSetProfile = () => {};
     this.onUrlLoad = () => {};
     this.onRouteSelected = () => {};
     this.onClearStorage = () => {};
+    this.onAthleteProfileChange = () => {};
 
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
     this.playButton = document.getElementById('play-tour');
     this.stopButton = document.getElementById('stop-tour');
     this.zoomToRouteButton = document.getElementById('zoom-to-route');
-    this.resetStyleButton = document.getElementById('reset-style'); // New element
+    this.resetStyleButton = document.getElementById('reset-style');
     this.speedSlider = document.getElementById('tour-speed');
     this.speedDisplay = document.getElementById('speed-display');
     this.routeColorInput = document.getElementById('route-color');
@@ -53,7 +55,6 @@ class UIManager {
     this.cameraPitchDisplay = document.getElementById('camera-pitch-display');
     this.clampToGroundInput = document.getElementById('clamp-to-ground');
     this.performancePresetInput = document.getElementById('performance-preset');
-
     this.loadingIndicator = document.getElementById('loading-indicator');
     this.tourControls = document.getElementById('tour-controls');
     this.routeStats = document.getElementById('route-stats');
@@ -63,16 +64,14 @@ class UIManager {
     this.performanceControls = document.getElementById('performance-controls');
     this.filenameSuggestion = document.getElementById('filename-suggestion');
     this.filenameContent = document.getElementById('filename-content');
-    this.panelContainer = document.getElementById('panel-container'); // New element
-    this.sidePanel = document.getElementById('side-panel'); // New element
+    this.panelContainer = document.getElementById('panel-container');
+    this.sidePanel = document.getElementById('side-panel');
     this.panelHeader = document.querySelector('.panel-header');
-    this.panelToggleButton = document.getElementById('panel-toggle-icon'); // New element
+    this.panelToggleButton = document.getElementById('panel-toggle-icon');
     this.quickControlsContainer = document.getElementById('quick-controls-container');
     this.speedSliderGroup = this.speedSlider.parentElement;
     this.distanceSliderGroup = this.cameraDistanceSlider.parentElement;
     this.pitchSliderGroup = this.cameraPitchSlider.parentElement;
-
-    // Custom Tour Controls
     this.customTourControls = document.getElementById('custom-tour-controls');
     this.timeDisplay = document.getElementById('custom-time-display');
     this.timeScrubber = document.getElementById('custom-time-scrubber');
@@ -86,25 +85,35 @@ class UIManager {
     this.loadFromUrlBtn = document.getElementById('load-from-url-btn');
     this.clearStorageButton = document.getElementById('clear-storage-button');
     this.routeLibrarySelect = document.getElementById('route-library-select');
-
-    // Performance Controls
     this.performanceProfileInput = document.getElementById('performance-profile');
-
-    // Advanced Controls
     this.advancedControls = document.getElementById('advanced-controls');
     this.advancedControlsHeader = this.advancedControls.querySelector('.collapsible-header');
     this.advancedControlsContent = this.advancedControls.querySelector('.collapsible-content');
+    this.athleteProfileControls = document.getElementById('athlete-profile-controls');
+    this.athleteProfileControlsHeader = this.athleteProfileControls.querySelector('.collapsible-header');
+    this.athleteProfileControlsContent = this.athleteProfileControls.querySelector('.collapsible-content');
+    this.athleteWeightDecrement = document.getElementById('athlete-weight-decrement');
+    this.athleteWeightDisplay = document.getElementById('athlete-weight-display');
+    this.athleteWeightIncrement = document.getElementById('athlete-weight-increment');
+    this.refuelThresholdDecrement = document.getElementById('refuel-threshold-decrement');
+    this.refuelThresholdDisplay = document.getElementById('refuel-threshold-display');
+    this.refuelThresholdIncrement = document.getElementById('refuel-threshold-increment');
+
+    this.targetSpeedDecrement = document.getElementById('target-speed-decrement');
+    this.targetSpeedDisplay = document.getElementById('target-speed-display');
+    this.targetSpeedIncrement = document.getElementById('target-speed-increment');
+    this.degradationDecrement = document.getElementById('degradation-decrement');
+    this.degradationDisplay = document.getElementById('degradation-display');
+    this.degradationIncrement = document.getElementById('degradation-increment');
+    this.restTimeDecrement = document.getElementById('rest-time-decrement');
+    this.restTimeDisplay = document.getElementById('rest-time-display');
+    this.restTimeIncrement = document.getElementById('rest-time-increment');
   }
 
-  /**
-   * Initializes all UI event listeners.
-   */
   init() {
     logger.info('Initializing UI event listeners.');
 
-    // Prevent Cesium from interfering with UI mouse events
     this.sidePanel.addEventListener('mousedown', (event) => {
-      // Allow clicks on the header to pass through
       if (!this.panelHeader.contains(event.target)) {
         this.viewer.scene.screenSpaceCameraController.enableInputs = false;
       }
@@ -113,7 +122,6 @@ class UIManager {
       this.viewer.scene.screenSpaceCameraController.enableInputs = true;
     });
 
-    // Panel toggle functionality
     this.panelHeader.addEventListener('click', () => {
       if (this.sidePanel.classList.contains('collapsed')) {
         this.expandPanel();
@@ -126,15 +134,14 @@ class UIManager {
     this.loadFromUrlBtn.addEventListener('click', () => this.onUrlLoad(this.gpxUrlInput.value));
     this.clearStorageButton.addEventListener('click', () => this.onClearStorage());
     this.routeLibrarySelect.addEventListener('change', (event) => this.onRouteSelected(event.target.value));
-
     this.playButton.addEventListener('click', () => this.onPlayTour());
     this.stopButton.addEventListener('click', () => this.onStopTour());
     this.zoomToRouteButton.addEventListener('click', () => this.onZoomToRoute());
-    this.resetStyleButton.addEventListener('click', () => this.onResetStyle()); // New listener
+    this.resetStyleButton.addEventListener('click', () => this.onResetStyle());
 
     this.speedSlider.addEventListener('input', (event) => {
       const position = parseInt(event.target.value, 10);
-      const relativeSpeed = this._logValue(position, 0.125, 8);
+      const relativeSpeed = this._logValue(position, 0.03125, 8);
       this.onSetSpeed(relativeSpeed);
       this.updateSpeedDisplay(relativeSpeed);
     });
@@ -149,7 +156,6 @@ class UIManager {
         this.onUpdateRouteWidth();
       }
     });
-
     this.routeWidthIncrement.addEventListener('click', () => {
       let width = parseInt(this.routeWidthDisplay.textContent, 10);
       if (width < 20) {
@@ -160,9 +166,7 @@ class UIManager {
     });
 
     this.cameraStrategyInput.addEventListener('change', (event) => this.onSetCameraStrategy(event.target.value));
-
     this.personColorInput.addEventListener('input', (event) => this.onUpdatePersonStyle({ color: event.target.value }));
-
     this.personSizeDecrement.addEventListener('click', () => {
       let size = parseFloat(this.personSizeDisplay.textContent);
       if (size > 0.5) {
@@ -171,7 +175,6 @@ class UIManager {
         this.onUpdatePersonStyle({ size: size });
       }
     });
-
     this.personSizeIncrement.addEventListener('click', () => {
       let size = parseFloat(this.personSizeDisplay.textContent);
       if (size < 3) {
@@ -182,12 +185,11 @@ class UIManager {
     });
 
     this.cameraDistanceSlider.addEventListener('input', (event) => {
-      const position = 100 - parseInt(event.target.value, 10); // Reverse the position
-      const distance = this._logValue(position, 50, 50000);
+      const position = 100 - parseInt(event.target.value, 10);
+      const distance = this._logValue(position, 25, 75000);
       this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
       this.onUpdateCameraDistance(distance);
     });
-
     this.cameraPitchSlider.addEventListener('input', (event) => {
       const pitch = parseInt(event.target.value, 10);
       this.cameraPitchDisplay.textContent = `${pitch}°`;
@@ -195,32 +197,115 @@ class UIManager {
     });
 
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
-
-    // Performance controls
     this.performanceProfileInput.addEventListener('change', (event) => this.onSetProfile(event.target.value));
 
-    // Custom tour controls listeners
     this.customPlayPauseBtn.addEventListener('click', () => this.onCustomPlayPause());
     this.customRewindBtn.addEventListener('click', () => this.onCustomRewind());
     this.customResetBtn.addEventListener('click', () => this.onCustomReset());
     this.customZoomBtn.addEventListener('click', () => this.onCustomZoom());
     this.customResetStyleBtn.addEventListener('click', () => this.onCustomResetStyle());
-    this.customPoiToggleBtn.addEventListener('click', () => this.onTogglePoiVisibility()); // New listener
+    this.customPoiToggleBtn.addEventListener('click', () => this.onTogglePoiVisibility());
     this.timeScrubber.addEventListener('input', (event) => {
       const percentage = parseInt(event.target.value, 10) / 1000;
       this.onCustomScrub(percentage);
     });
 
-    // Advanced controls collapsible
-    this.advancedControlsContent.style.display = 'none'; // Collapse by default
-    this.advancedControlsHeader.classList.add('active'); // Set to active when collapsed
+    this.advancedControlsContent.style.display = 'block';
     this.advancedControlsHeader.addEventListener('click', () => {
       this.advancedControlsContent.style.display = this.advancedControlsContent.style.display === 'none' ? 'block' : 'none';
       this.advancedControlsHeader.classList.toggle('active');
     });
+
+    this.athleteProfileControlsContent.style.display = 'block';
+    this.athleteProfileControlsHeader.addEventListener('click', () => {
+      this.athleteProfileControlsContent.style.display = this.athleteProfileControlsContent.style.display === 'none' ? 'block' : 'none';
+      this.athleteProfileControlsHeader.classList.toggle('active');
+    });
+
+    this.athleteWeightDecrement.addEventListener('click', () => {
+        let value = parseInt(this.athleteWeightDisplay.textContent, 10);
+        if (value > 30) {
+            value--;
+            this.athleteWeightDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+    this.athleteWeightIncrement.addEventListener('click', () => {
+        let value = parseInt(this.athleteWeightDisplay.textContent, 10);
+        if (value < 200) {
+            value++;
+            this.athleteWeightDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+
+    this.refuelThresholdDecrement.addEventListener('click', () => {
+        let value = parseInt(this.refuelThresholdDisplay.textContent, 10);
+        if (value > 50) {
+            value -= 50;
+            this.refuelThresholdDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+    this.refuelThresholdIncrement.addEventListener('click', () => {
+        let value = parseInt(this.refuelThresholdDisplay.textContent, 10);
+        value += 50;
+        this.refuelThresholdDisplay.textContent = value;
+        this.onAthleteProfileChange();
+    });
+
+    this.targetSpeedDecrement.addEventListener('click', () => {
+        let value = parseFloat(this.targetSpeedDisplay.textContent);
+        if (value > 0.5) {
+            value = Math.round((value - 0.5) * 10) / 10;
+            this.targetSpeedDisplay.textContent = value.toFixed(1);
+            this.onAthleteProfileChange();
+        }
+    });
+    this.targetSpeedIncrement.addEventListener('click', () => {
+        let value = parseFloat(this.targetSpeedDisplay.textContent);
+        if (value < 20) {
+            value = Math.round((value + 0.5) * 10) / 10;
+            this.targetSpeedDisplay.textContent = value.toFixed(1);
+            this.onAthleteProfileChange();
+        }
+    });
+
+    this.degradationDecrement.addEventListener('click', () => {
+        let value = parseInt(this.degradationDisplay.textContent, 10);
+        if (value > 0) {
+            value--;
+            this.degradationDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+    this.degradationIncrement.addEventListener('click', () => {
+        let value = parseInt(this.degradationDisplay.textContent, 10);
+        if (value < 50) {
+            value++;
+            this.degradationDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+
+    this.restTimeDecrement.addEventListener('click', () => {
+        let value = parseInt(this.restTimeDisplay.textContent, 10);
+        if (value > 0) {
+            value--;
+            this.restTimeDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
+    this.restTimeIncrement.addEventListener('click', () => {
+        let value = parseInt(this.restTimeDisplay.textContent, 10);
+        if (value < 60) {
+            value++;
+            this.restTimeDisplay.textContent = value;
+            this.onAthleteProfileChange();
+        }
+    });
   }
 
-  // --- Helper methods for logarithmic slider ---
   _logValue(position, min, max) {
     const minp = 0;
     const maxp = 100;
@@ -240,7 +325,6 @@ class UIManager {
   }
 
   updateUIForState(state) {
-    // Hide everything by default
     this.loadingIndicator.style.display = 'none';
     this.tourControls.style.display = 'none';
     this.customTourControls.style.display = 'none';
@@ -249,40 +333,68 @@ class UIManager {
     this.cameraStrategyControls.style.display = 'none';
     this.performanceControls.style.display = 'none';
     this.filenameSuggestion.style.display = 'none';
+    this.athleteProfileControls.style.display = 'none';
     this.quickControlsContainer.classList.remove('active');
 
     if (state === 'LOADING') {
       this.loadingIndicator.style.display = 'block';
     } else if (state === 'NO_ROUTE') {
-      // Only the file input is visible, which is always the case
+      // Only the file input is visible
     } else if (state === 'ROUTE_LOADED' || state === 'TOUR_PAUSED') {
       this.routeStats.style.display = 'block';
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
+      this.athleteProfileControls.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      this.customTourControls.style.display = 'flex'; // Always show custom controls
+      this.customTourControls.style.display = 'flex';
       this.setPlayPauseButtonState(false);
-      this.tourControls.style.display = 'none'; // Hide old desktop controls
+      this.tourControls.style.display = 'none';
     } else if (state === 'TOUR_PLAYING') {
       this.routeStats.style.display = 'block';
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
+      this.athleteProfileControls.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      this.customTourControls.style.display = 'flex'; // Always show custom controls
+      this.customTourControls.style.display = 'flex';
       this.setPlayPauseButtonState(true);
-      this.tourControls.style.display = 'none'; // Hide old desktop controls
+      this.tourControls.style.display = 'none';
     }
   }
 
   updateStatsContent(stats) {
-    this.statsContent.innerHTML = `
-      <p>Distance: ${stats.distance} km</p>
-      <p>Elevation Gain: ${stats.elevationGain} m</p>
+    this.currentStats = stats; // Store the latest stats
+    let html = `
+      <p>Total Distance: ${stats.totalDistance} km</p>
+      <p>Total Ascent: ${stats.totalElevationGain} m</p>
+      <p>Total Km-effort: ${stats.totalKmEffort}</p>
     `;
+    if (stats.totalCalories !== undefined) {
+      html += `<p>Est. Total Calories: ${stats.totalCalories} kcal</p>`;
+    }
+    if (stats.totalPlannedTime !== undefined) {
+      html += `<p>Planned Total Time: ${this._formatTime(stats.totalPlannedTime)}</p>`;
+    }
+    if (stats.totalDurationString) {
+      html += `<p>Actual Total Time: ${stats.totalDurationString}</p>`;
+    }
+    if (stats.overallAverageSpeed) {
+      html += `<p>Actual Avg Speed: ${stats.overallAverageSpeed} km/h</p>`;
+    }
+    if (stats.overallAverageAscentRate) {
+      html += `<p>Actual Avg Ascent Rate: ${stats.overallAverageAscentRate} m/h</p>`;
+    }
+    this.statsContent.innerHTML = html;
+  }
+
+  _formatTime(totalSeconds) {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }
 
   updateFilenameContent(filename) {
@@ -321,6 +433,30 @@ class UIManager {
     const position = 100 - parseInt(this.cameraDistanceSlider.value, 10);
     return this._logValue(position, 50, 50000);
   }
+  
+  getStatsContent() {
+      return this.currentStats;
+  }
+
+  getAthleteWeight() {
+    return parseFloat(this.athleteWeightDisplay.textContent);
+  }
+
+  getRefuelThreshold() {
+    return parseFloat(this.refuelThresholdDisplay.textContent);
+  }
+
+  getTargetSpeed() {
+    return parseFloat(this.targetSpeedDisplay.textContent);
+  }
+
+  getDegradation() {
+    return parseFloat(this.degradationDisplay.textContent);
+  }
+
+  getRestTime() {
+    return parseFloat(this.restTimeDisplay.textContent);
+  }
 
   setClampToGroundLocked(isLocked) {
     this.clampToGroundInput.disabled = isLocked;
@@ -330,8 +466,6 @@ class UIManager {
     this.cameraPitchSlider.disabled = !isEnabled;
     this.pitchSliderGroup.style.opacity = isEnabled ? '1' : '0.5';
   }
-
-  // --- Custom Tour Control Updaters ---
 
   updateTimeDisplay(timeString) { this.timeDisplay.textContent = timeString; }
 
@@ -366,7 +500,6 @@ class UIManager {
   collapsePanel() {
     if (!this.sidePanel.classList.contains('collapsed')) {
       this.sidePanel.classList.add('collapsed');
-      // Move sliders to quick controls and add vertical class
       this.speedSliderGroup.classList.add('vertical-slider');
       this.distanceSliderGroup.classList.add('vertical-slider');
       this.pitchSliderGroup.classList.add('vertical-slider');
@@ -379,7 +512,6 @@ class UIManager {
   expandPanel() {
     if (this.sidePanel.classList.contains('collapsed')) {
       this.sidePanel.classList.remove('collapsed');
-      // Move sliders back to main panel and restore labels
       this.speedSliderGroup.classList.remove('vertical-slider');
       this.distanceSliderGroup.classList.remove('vertical-slider');
       this.pitchSliderGroup.classList.remove('vertical-slider');
@@ -389,19 +521,12 @@ class UIManager {
     }
   }
 
-  /**
-   * Populates the Route Library dropdown with a list of routes.
-   * @param {Array<object>} routes - An array of route records from RouteStorage.
-   */
   populateRouteLibrary(routes) {
-    this.routeLibrarySelect.innerHTML = ''; // Clear existing options
-
-    // Add the "No Route" option
+    this.routeLibrarySelect.innerHTML = '';
     const noRouteOption = document.createElement('option');
     noRouteOption.value = 'none';
     noRouteOption.textContent = '— Select a Route —';
     this.routeLibrarySelect.appendChild(noRouteOption);
-
     if (routes && routes.length > 0) {
       routes.forEach(route => {
         const option = document.createElement('option');
