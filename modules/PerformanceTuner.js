@@ -16,8 +16,9 @@ class PerformanceTuner {
     this.onSettingsUpdate = () => {}; // Callback for UI updates
 
     // Auto-tuning state
+    this._isActive = false; // NEW: Performance tuning is inactive by default
     this.currentProfile = 'Balanced';
-    this.currentPresetIndex = 0; // Default to be overwritten
+    this.currentPresetIndex = 0; // Default to be overwritten by activate/deactivate
     this.debounceTimeoutId = null;
     this.isDebouncing = false;
     this.frameCount = 0;
@@ -226,12 +227,10 @@ class PerformanceTuner {
       },
     ];
 
-    // Set initial preset to a medium level
-    this.currentPresetIndex = this._presets.length-1;//2;
-    this.applyPreset(this.currentPresetIndex);
-
     // Add a postRender listener to monitor performance
     this.viewer.scene.postRender.addEventListener(() => {
+      if (!this._isActive) return; // Do nothing if inactive
+
       this.frameCount++;
       const now = Date.now();
       const elapsedTime = now - this.lastMonitorTime;
@@ -376,6 +375,24 @@ class PerformanceTuner {
     if (this.viewer.scene.requestRenderMode) {
       this.viewer.scene.requestRender();
     }
+  }
+
+  /**
+   * Activates the performance auto-tuner.
+   */
+  activate() {
+    logger.info('PerformanceTuner activated.');
+    this._isActive = true;
+  }
+
+  /**
+   * Deactivates the performance auto-tuner and applies the highest quality preset.
+   */
+  deactivate() {
+    logger.info('PerformanceTuner deactivated, applying high-quality preset.');
+    this._isActive = false;
+    this.currentPresetIndex = this._presets.length - 1;
+    this.applyPreset(this.currentPresetIndex);
   }
 }
 

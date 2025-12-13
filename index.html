@@ -78,16 +78,26 @@
 
       <div id="performance-controls" class="control-group" style="display: none;">
         <h4>Performance</h4>
-        <div class="control-section">
-          <label for="performance-profile">Profile</label>
-          <select id="performance-profile">
-            <option value="Performance">Performance</option>
-            <option value="Balanced" selected>Balanced</option>
-            <option value="Power Saver">Power Saver</option>
-          </select>
-        </div>
-      </div>
-
+                  <div class="control-section">
+                    <label for="performance-profile">Profile</label>
+                    <select id="performance-profile">
+                      <option value="Performance">Performance</option>
+                      <option value="Balanced" selected>Balanced</option>
+                      <option value="Power Saver">Power Saver</option>
+                    </select>
+                  </div>
+                  <!-- NEW: Smoothing Factor Controls -->
+                  <div class="control-section">
+                    <label>Smoothing Factor:</label>
+                    <div class="number-input-widget">
+                      <button id="smoothing-factor-decrement-large" class="adjust-button">--</button>
+                      <button id="smoothing-factor-decrement" class="adjust-button">-</button>
+                      <span id="smoothing-factor-display">100</span>
+                      <button id="smoothing-factor-increment" class="adjust-button">+</button>
+                      <button id="smoothing-factor-increment-large" class="adjust-button">++</button>
+                    </div>
+                  </div>
+                </div>
       <div id="style-controls" class="control-group" style="display: none;">
           <h4>Style</h4>
           <div>
@@ -232,6 +242,10 @@
       <svg class="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.54 18.54 0 0 1 2.21-3.02m4.63-4.63A10.07 10.07 0 0 1 12 4c7 0 11 8 11 8a18.54 18.54 0 0 1-2.21 3.02m-4.63 4.63L12 9a3 3 0 0 0-3-3m-2.07 2.07L12 15a3 3 0 0 0 3 3"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
     </button>
   </div>
+</div>
+
+<div id="bottom-panel-container">
+  <!-- The unified bottom panel will be assembled here -->
 </div>
 
 <script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script>

@@ -71,15 +71,15 @@ The final output is a single, unified `tourData` array where each point contains
     *   Manages the application state via the `setState()` method.
     *   Handles the main event flow by wiring up callbacks from the `UIManager` to the appropriate controllers and state transitions.
     *   The `handleResetStyle()` method has been corrected to only reset style-related properties, and no longer interferes with camera state, preventing disruptive side effects during tour playback.
-    *   Contains the `postRender` listener, which is the single source of truth for updating time-based UI elements (labels, displays) during playback.
+    *   Contains the `postRender` listener, which is the single source of truth for updating time-based UI elements (labels, displays) during playback and handles freezing replay stats to cumulative values at the tour's end.
 
 ### 4.2. `UIManager`
 *   **Description:** Manages all interactions with the DOM.
 *   **Responsibilities:**
     *   Holds references to all interactive DOM elements.
-    *   Initializes all UI event listeners.
+    *   Initializes all UI event listeners, including fully wired and functional smoothing factor controls.
     *   Manages the logic for the collapsible side panel via `collapsePanel()` and `expandPanel()` methods, which are called by the panel's click handler and can be called programmatically (e.g., to auto-collapse on tour start).
-    *   Provides a single `updateUIForState(state)` method that shows/hides all relevant UI sections based on the current application state. This method now ensures the custom tour controls are always visible when a route is loaded, regardless of device type.
+    *   Provides a single `updateUIForState(state)` method that shows/hides all relevant UI sections based on the current application state. This method now ensures the custom tour controls and the stats overlay (within the unified bottom panel) are always visible when a route is loaded, regardless of device type.
     *   Provides methods to update the state of custom controls (e.g., `setPlayPauseButtonState`, `setPoiButtonState`) by toggling CSS classes, which in turn control the visibility of different SVG icons.
 
 ### 4.3. `TourController`
@@ -101,7 +101,7 @@ The final output is a single, unified `tourData` array where each point contains
     *   Applies the final calculated speed and direction to the Cesium `Clock` multiplier.
 
 ### 4.5. `Person` & Other Services
-*   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features. It also manages a static list of fetched POI data (`_poiData`) and provides methods to access and clear this data.
+*   `PoiService`: Now uses a robust fallback strategy (`name`, `name:en`, `alt_name`, `old_name`) to find a valid name for POIs, significantly reducing the number of "Unnamed" features. POI entities (icons and labels) are now correctly clamped to the ground terrain. It also manages a static list of fetched POI data (`_poiData`) and provides methods to access and clear this data.
 *   `EnergyCalculator`: A new module responsible for all user-specific energy estimations (e.g., calories) based on the route's physical properties and the user's weight.
 *   `PerformancePlanner`: A new module responsible for all forward-looking simulations. It takes user targets (e.g., target speed) and generates a planned timeline and performance profile for the route.
 *   `PerformanceTuner`: A new module responsible for managing all rendering quality and performance settings. See section 7 for details.
@@ -236,9 +236,44 @@ To give users more control over the camera, a manual pitch control feature has b
 
 ### 11.2. Implementation
 *   The `UIManager` has been updated to manage the new slider, including its movement between the side panel and the quick controls.
-*   A new `onSetCameraPitch` callback has been added to the `UIManager` to communicate the slider's value to the `App` controller.
+*   The slider's event listener in `UIManager` has been updated to call `SettingsManager.set()` directly, ensuring the value is updated in the central state.
 *   The `TourController` has a new `cameraPitch` property to store the current pitch value.
 *   The camera strategy functions in the `TourController` have been updated to use the `cameraPitch` property when calculating the camera's orientation.
 
 ### 11.3. Strategy-Specific Behavior
 *   The pitch control is enabled for the "Overhead" and "Third-Person" camera strategies.
+
+## 12. Application State and UI Architecture
+
+To enhance maintainability and enable new features like URL-based configuration, the application's state management and UI architecture have been significantly refactored.
+
+### 12.1. Centralized State Management (`SettingsManager`)
+
+A new singleton module, `SettingsManager.js`, has been introduced as the **single source of truth** for all configurable parameters. This eliminates hard-coded constants and decentralized state that was previously scattered across multiple modules.
+
+*   **Singleton Pattern:** The module exports a single, frozen instance, ensuring all parts of the application share the exact same state container.
+*   **Schema-Driven:** A private `_settingsSchema` defines every parameter's `type`, `defaultValue`, validation rules (`min`, `max`, `options`), and whether it can be configured via a URL (`url: true`). This makes adding or modifying settings straightforward and self-documenting.
+*   **Layered Loading:** On initialization, the manager first loads all default values from the schema, then immediately parses the browser's URL for any valid query parameters, which override the defaults. This provides a clean and predictable configuration hierarchy.
+*   **Reactive API:** The manager provides a simple, reactive interface:
+    *   `get(key)`: For synchronous retrieval of a setting's current value.
+    *   `set(key, value)`: To update a setting. This method automatically validates the new value against the schema before storing it.
+    *   `subscribe(key, callback)`: Allows any module to listen for changes to a specific setting and execute a callback function, enabling reactive updates throughout the application.
+
+### 12.2. Reactive UI Architecture
+
+The `UIManager` has been refactored to be a reactive component that synchronizes with the `SettingsManager`. This is achieved through a "UI Hydration" pattern and a clear separation of data flows.
+
+*   **UI Hydration (`_initializeSettingsBasedUI`):** A new private method in `UIManager` is now responsible for populating the state of all UI elements. It runs once during initialization. For each settings-driven control, it performs two actions:
+    1.  Sets the UI element's initial state (e.g., a slider's position) based on the value from `SettingsManager.get()`.
+    2.  Subscribes to that setting via `SettingsManager.subscribe()` to ensure the UI element automatically updates if the setting is changed from any other source (e.g., a URL parameter).
+
+*   **Two-Way Data Flow:** This creates two clear, decoupled data flows:
+    1.  **UI -> State:** User interaction (e.g., moving a slider) triggers an event listener in `UIManager` which calls `SettingsManager.set()`.
+    2.  **State -> UI:** A change in `SettingsManager` (from any source) triggers the subscription callback inside `UIManager`, which updates the specific UI element to reflect the new state.
+
+*   **`StatsOverlay.js` Module:** The display of all route and performance statistics has been removed from the main side panel and the traveler's billboard label. This responsibility is now encapsulated in a new `StatsOverlay.js` module, which creates and manages a consolidated Heads-Up Display (HUD) that floats over the 3D view. It now features:
+    *   **Compact Layout:** Key summary figures are displayed prominently in the section headers with icons.
+    *   **Transposed Replay Stats Table:** The replay stats table has been transposed for better vertical space utilization, showing metrics as columns.
+    *   **Responsive Units:** Units for metrics are dynamically hidden on mobile devices to prevent wrapping and save space.
+    *   **Expanded Clickable Area:** The entire header area of each stats section is now clickable to toggle its collapsible content, improving usability.
+    This simplifies the `app.js` and `UIManager` and provides a cleaner user experience.

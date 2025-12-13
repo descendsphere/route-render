@@ -1,10 +1,9 @@
 import logger from './Logger.js';
+import SettingsManager from './SettingsManager.js';
 
 class UIManager {
   constructor(viewer) {
     this.viewer = viewer;
-    this.currentStats = {}; // New: To hold the last stats object
-
     // Callbacks to be set by the App class
     this.onFileSelected = () => {};
     this.onPlayTour = () => {};
@@ -58,7 +57,6 @@ class UIManager {
     this.loadingIndicator = document.getElementById('loading-indicator');
     this.tourControls = document.getElementById('tour-controls');
     this.routeStats = document.getElementById('route-stats');
-    this.statsContent = document.getElementById('stats-content');
     this.styleControls = document.getElementById('style-controls');
     this.cameraStrategyControls = document.getElementById('camera-strategy-controls');
     this.performanceControls = document.getElementById('performance-controls');
@@ -81,11 +79,17 @@ class UIManager {
     this.customZoomBtn = document.getElementById('custom-zoom-btn');
     this.customResetStyleBtn = document.getElementById('custom-reset-style-btn');
     this.customPoiToggleBtn = document.getElementById('custom-poi-toggle-btn');
+    this.bottomPanelContainer = document.getElementById('bottom-panel-container'); // NEW
     this.gpxUrlInput = document.getElementById('gpx-url-input');
     this.loadFromUrlBtn = document.getElementById('load-from-url-btn');
     this.clearStorageButton = document.getElementById('clear-storage-button');
     this.routeLibrarySelect = document.getElementById('route-library-select');
     this.performanceProfileInput = document.getElementById('performance-profile');
+    this.smoothingFactorDecrementLarge = document.getElementById('smoothing-factor-decrement-large');
+    this.smoothingFactorDecrement = document.getElementById('smoothing-factor-decrement');
+    this.smoothingFactorDisplay = document.getElementById('smoothing-factor-display');
+    this.smoothingFactorIncrement = document.getElementById('smoothing-factor-increment');
+    this.smoothingFactorIncrementLarge = document.getElementById('smoothing-factor-increment-large');
     this.advancedControls = document.getElementById('advanced-controls');
     this.advancedControlsHeader = this.advancedControls.querySelector('.collapsible-header');
     this.advancedControlsContent = this.advancedControls.querySelector('.collapsible-content');
@@ -142,8 +146,7 @@ class UIManager {
     this.speedSlider.addEventListener('input', (event) => {
       const position = parseInt(event.target.value, 10);
       const relativeSpeed = this._logValue(position, 0.03125, 8);
-      this.onSetSpeed(relativeSpeed);
-      this.updateSpeedDisplay(relativeSpeed);
+      SettingsManager.set('tourSpeed', relativeSpeed);
     });
 
     this.routeColorInput.addEventListener('input', () => this.onUpdateRouteColor());
@@ -165,7 +168,7 @@ class UIManager {
       }
     });
 
-    this.cameraStrategyInput.addEventListener('change', (event) => this.onSetCameraStrategy(event.target.value));
+    this.cameraStrategyInput.addEventListener('change', (event) => SettingsManager.set('cameraStrategy', event.target.value));
     this.personColorInput.addEventListener('input', (event) => this.onUpdatePersonStyle({ color: event.target.value }));
     this.personSizeDecrement.addEventListener('click', () => {
       let size = parseFloat(this.personSizeDisplay.textContent);
@@ -187,14 +190,9 @@ class UIManager {
     this.cameraDistanceSlider.addEventListener('input', (event) => {
       const position = 100 - parseInt(event.target.value, 10);
       const distance = this._logValue(position, 25, 75000);
-      this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
-      this.onUpdateCameraDistance(distance);
+      SettingsManager.set('cameraDistance', distance);
     });
-    this.cameraPitchSlider.addEventListener('input', (event) => {
-      const pitch = parseInt(event.target.value, 10);
-      this.cameraPitchDisplay.textContent = `${pitch}°`;
-      this.onSetCameraPitch(pitch);
-    });
+    this.cameraPitchSlider.addEventListener('input', (event) => SettingsManager.set('cameraPitch', parseInt(event.target.value, 10)));
 
     this.clampToGroundInput.addEventListener('change', () => this.onToggleClampToGround());
     this.performanceProfileInput.addEventListener('change', (event) => this.onSetProfile(event.target.value));
@@ -304,6 +302,14 @@ class UIManager {
             this.onAthleteProfileChange();
         }
     });
+
+    // NEW: Smoothing Factor Listeners
+    this.smoothingFactorDecrementLarge.addEventListener('click', () => this._adjustSmoothingFactor(-5));
+    this.smoothingFactorDecrement.addEventListener('click', () => this._adjustSmoothingFactor(-1));
+    this.smoothingFactorIncrement.addEventListener('click', () => this._adjustSmoothingFactor(1));
+    this.smoothingFactorIncrementLarge.addEventListener('click', () => this._adjustSmoothingFactor(5));
+
+    this._initializeSettingsBasedUI();
   }
 
   _logValue(position, min, max) {
@@ -327,7 +333,7 @@ class UIManager {
   updateUIForState(state) {
     this.loadingIndicator.style.display = 'none';
     this.tourControls.style.display = 'none';
-    this.customTourControls.style.display = 'none';
+    this.bottomPanelContainer.style.display = 'none'; // Target the new parent
     this.routeStats.style.display = 'none';
     this.styleControls.style.display = 'none';
     this.cameraStrategyControls.style.display = 'none';
@@ -341,53 +347,28 @@ class UIManager {
     } else if (state === 'NO_ROUTE') {
       // Only the file input is visible
     } else if (state === 'ROUTE_LOADED' || state === 'TOUR_PAUSED') {
-      this.routeStats.style.display = 'block';
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.athleteProfileControls.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      this.customTourControls.style.display = 'flex';
+      this.bottomPanelContainer.style.display = 'flex'; // Target the new parent
+      this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(false);
       this.tourControls.style.display = 'none';
     } else if (state === 'TOUR_PLAYING') {
-      this.routeStats.style.display = 'block';
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.athleteProfileControls.style.display = 'block';
       this.quickControlsContainer.classList.add('active');
-      this.customTourControls.style.display = 'flex';
+      this.bottomPanelContainer.style.display = 'flex'; // Target the new parent
+      this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(true);
       this.tourControls.style.display = 'none';
     }
-  }
-
-  updateStatsContent(stats) {
-    this.currentStats = stats; // Store the latest stats
-    let html = `
-      <p>Total Distance: ${stats.totalDistance} km</p>
-      <p>Total Ascent: ${stats.totalElevationGain} m</p>
-      <p>Total Km-effort: ${stats.totalKmEffort}</p>
-    `;
-    if (stats.totalCalories !== undefined) {
-      html += `<p>Est. Total Calories: ${stats.totalCalories} kcal</p>`;
-    }
-    if (stats.totalPlannedTime !== undefined) {
-      html += `<p>Planned Total Time: ${this._formatTime(stats.totalPlannedTime)}</p>`;
-    }
-    if (stats.totalDurationString) {
-      html += `<p>Actual Total Time: ${stats.totalDurationString}</p>`;
-    }
-    if (stats.overallAverageSpeed) {
-      html += `<p>Actual Avg Speed: ${stats.overallAverageSpeed} km/h</p>`;
-    }
-    if (stats.overallAverageAscentRate) {
-      html += `<p>Actual Avg Ascent Rate: ${stats.overallAverageAscentRate} m/h</p>`;
-    }
-    this.statsContent.innerHTML = html;
   }
 
   _formatTime(totalSeconds) {
@@ -434,10 +415,6 @@ class UIManager {
     return this._logValue(position, 50, 50000);
   }
   
-  getStatsContent() {
-      return this.currentStats;
-  }
-
   getAthleteWeight() {
     return parseFloat(this.athleteWeightDisplay.textContent);
   }
@@ -535,6 +512,69 @@ class UIManager {
         this.routeLibrarySelect.appendChild(option);
       });
     }
+  }
+
+  /**
+   * Adjusts the smoothing factor by a given step and updates the SettingsManager.
+   * @param {number} step - The amount to adjust the smoothing factor by.
+   * @private
+   */
+  _adjustSmoothingFactor(step) {
+    const currentValue = SettingsManager.get('smoothingFactor');
+    const newValue = currentValue + step;
+    SettingsManager.set('smoothingFactor', newValue);
+  }
+
+  /**
+   * Updates the display of the smoothing factor.
+   * @param {number} value - The new smoothing factor value.
+   */
+  updateSmoothingFactorDisplay(value) {
+    this.smoothingFactorDisplay.textContent = value.toString();
+  }
+
+  /**
+   * Initializes all UI elements tied to SettingsManager and subscribes them to future changes.
+   * This centralizes the "hydration" of the UI from the state.
+   * @private
+   */
+  _initializeSettingsBasedUI() {
+    // --- Tour Speed Slider ---
+    SettingsManager.subscribe('tourSpeed', (speed) => {
+      this.speedSlider.value = this._logPosition(speed, 0.03125, 8);
+      this.updateSpeedDisplay(speed);
+    });
+    const initialSpeed = SettingsManager.get('tourSpeed');
+    this.speedSlider.value = this._logPosition(initialSpeed, 0.03125, 8);
+    this.updateSpeedDisplay(initialSpeed);
+
+    // --- Camera Strategy Dropdown ---
+    this.cameraStrategyInput.value = SettingsManager.get('cameraStrategy');
+    SettingsManager.subscribe('cameraStrategy', (strategy) => {
+        this.cameraStrategyInput.value = strategy;
+    });
+
+    // --- Camera Distance Slider ---
+    SettingsManager.subscribe('cameraDistance', (distance) => {
+      this.cameraDistanceSlider.value = 100 - this._logPosition(distance, 25, 75000);
+      this.cameraDistanceDisplay.textContent = `${Math.round(distance)}m`;
+    });
+    const initialDistance = SettingsManager.get('cameraDistance');
+    this.cameraDistanceSlider.value = 100 - this._logPosition(initialDistance, 25, 75000);
+    this.cameraDistanceDisplay.textContent = `${Math.round(initialDistance)}m`;
+    
+    // --- Camera Pitch Slider ---
+    SettingsManager.subscribe('cameraPitch', (pitch) => {
+      this.cameraPitchSlider.value = pitch;
+      this.cameraPitchDisplay.textContent = `${pitch}°`;
+    });
+    const initialPitch = SettingsManager.get('cameraPitch');
+    this.cameraPitchSlider.value = initialPitch;
+    this.cameraPitchDisplay.textContent = `${initialPitch}°`;
+
+    // --- Smoothing Factor ---
+    this.updateSmoothingFactorDisplay(SettingsManager.get('smoothingFactor'));
+    SettingsManager.subscribe('smoothingFactor', (value) => this.updateSmoothingFactorDisplay(value));
   }
 }
 

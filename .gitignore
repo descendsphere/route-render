@@ -33,6 +33,9 @@ Thumbs.db
 # Temporary commit message file
 commit_message.txt
 
+# Gemini CLI temporary files
+.gemini/commands/
+
 # Firebase CLI configuration files
 .firebaserc
 .firebase/

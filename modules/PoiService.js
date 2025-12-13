@@ -78,14 +78,14 @@ class PoiService {
 
     this._poiEntities = this._poiData.map(poi => {
       return this.viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat, 300),
+        position: Cesium.Cartesian3.fromDegrees(poi.lon, poi.lat), // No hardcoded altitude
         description: poi.name,
         gpxEntity: true, // Flag for cleanup
         billboard: {
           image: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
           color: Cesium.Color.BLUE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          clampToGround: true,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // Correct property
           show: isVisible,
         },
         label: {
@@ -94,6 +94,7 @@ class PoiService {
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -50),
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND, // Add property
           show: isVisible,
         },
       });

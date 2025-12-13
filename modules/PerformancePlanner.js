@@ -1,4 +1,5 @@
 import logger from './Logger.js';
+import SettingsManager from './SettingsManager.js';
 
 /**
  * A utility class for simulating route completion time based on performance parameters.
@@ -15,8 +16,6 @@ class PerformancePlanner {
    */
   static planPerformanceProfile(perPointData, targetSpeedKmh, degradationFactor, refuelPoints, restPerRefuelMin) {
     logger.info('Starting performance planning simulation.');
-    const SMOOTHING_PERIOD_SAMPLES = 240;
-    const smoothingFactor = 2 / (SMOOTHING_PERIOD_SAMPLES + 1);
 
     if (!perPointData || perPointData.length < 2) {
       return { totalPlannedTime: 0, perPointData: perPointData };
@@ -74,6 +73,8 @@ class PerformancePlanner {
         }
         
         const instPlannedSpeedKmh = adjustedSpeedMps * 3.6;
+
+        const smoothingFactor = 2 / (Math.min(i, SettingsManager.get('smoothingFactor')) + 1);
 
         if (emaPlannedSpeed === null) {
             emaPlannedSpeed = instPlannedSpeedKmh;

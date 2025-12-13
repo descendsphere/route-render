@@ -10,6 +10,8 @@ import RouteStorage from './modules/RouteStorage.js';
 import GpxGenerator from './modules/GpxGenerator.js';
 import EnergyCalculator from './modules/EnergyCalculator.js';
 import PerformancePlanner from './modules/PerformancePlanner.js';
+import StatsOverlay from './modules/StatsOverlay.js'; // NEW
+import SettingsManager from './modules/SettingsManager.js';
 
 class App {
   constructor() {
@@ -21,6 +23,7 @@ class App {
     this.routeEntity = null;
     this.person = null;
     this.ui = null; // New UIManager instance
+    this.statsOverlay = null; // NEW
     this.state = 'NO_ROUTE'; // Initial state
     this.poisAreVisible = true; // Initial state for POI visibility
     this.routes = []; // To cache routes from storage
@@ -30,6 +33,7 @@ class App {
     this.hasNativeTimestamps = false;
     this.actualPerformanceStats = null;
     this.baseRouteStats = null;
+    this.tourPercentage = 0; // To track tour progress
   }
 
   /**
@@ -40,14 +44,26 @@ class App {
   setState(newState) {
     if (this.state === newState) return;
     logger.info(`State change: ${this.state} -> ${newState}`);
+    if (this.state === 'TOUR_PLAYING' && newState !== 'TOUR_PLAYING') {
+      this.performanceTuner.deactivate();
+    }
 
     // State Transition Logic
     if (newState === 'TOUR_PLAYING') {
+      this.performanceTuner.activate();
       this.tourController.startTour();
       this.ui.collapsePanel(); // Auto-collapse the panel
+      // Only change collapse state if starting a new tour
+      if (this.state === 'ROUTE_LOADED') {
+        this.statsOverlay.collapseRouteStats();
+        this.statsOverlay.showReplayStats();
+        this.statsOverlay.expandReplayStats();
+      }
     } else if (newState === 'TOUR_PAUSED') {
       this.tourController.pauseTour();
     } else if (newState === 'ROUTE_LOADED') {
+      this.statsOverlay.hideReplayStats();
+      this.statsOverlay.expandRouteStats();
       this.ui.setRewindButtonIcon(true); // Always initialize to forward-facing icon
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
         this.tourController.stopTour();
@@ -108,6 +124,7 @@ class App {
     this.tourController = new TourController(this.viewer, this.person);
     this.poiService = new PoiService(this.viewer);
     this.ui = new UIManager(this.viewer); // Initialize UIManager
+    this.statsOverlay = new StatsOverlay(); // NEW: Initialize StatsOverlay
 
     // Set up UI callbacks
     this.ui.onFileSelected = (file) => this.handleFileSelect(file);
@@ -115,18 +132,12 @@ class App {
     this.ui.onStopTour = () => this.setState('ROUTE_LOADED'); // Desktop stop
     this.ui.onZoomToRoute = () => this.zoomToRoute();
     this.ui.onResetStyle = () => this.handleResetStyle();
-    this.ui.onSetSpeed = (relativeSpeed) => this.tourController.setSpeed(relativeSpeed);
     this.ui.onUpdateRouteColor = () => this.updateRouteStyle();
     this.ui.onUpdateRouteWidth = () => this.updateRouteStyle();
-    this.ui.onSetCameraStrategy = (strategy) => {
-      this.tourController.setCameraStrategy(strategy);
-    };
     this.ui.onUpdatePersonStyle = (style) => {
       this.person.updateStyle(style);
       this.performanceTuner.requestRender();
     };
-    this.ui.onUpdateCameraDistance = (distance) => this.tourController.setCameraDistance(distance);
-    this.ui.onSetCameraPitch = (pitch) => this.tourController.setCameraPitch(pitch);
     this.ui.onToggleClampToGround = () => {
       if (this.currentPoints.length > 0) {
         this.updateRouteStyle();
@@ -139,6 +150,12 @@ class App {
     this.ui.onRouteSelected = (routeId) => this.handleRouteSelect(routeId);
     this.ui.onClearStorage = () => this.handleClearStorage();
     this.ui.onAthleteProfileChange = () => this.handleAnalysisUpdate();
+
+    // Subscribe to tourSpeed changes
+    SettingsManager.subscribe('tourSpeed', (speed) => this.tourController.setSpeed(speed));
+
+    // Subscribe to smoothing factor changes
+    SettingsManager.subscribe('smoothingFactor', () => this.recalculateAnalytics());
 
     // Custom tour controls callbacks
     this.ui.onCustomPlayPause = () => {
@@ -185,11 +202,22 @@ class App {
 
     // Tour controller tick callback
     this.tourController.onTick = ({ percentage, currentTime }) => {
+      this.tourPercentage = percentage;
       this.ui.updateScrubber(percentage);
       // The time display will be updated by the postRender listener
     };
 
     this.ui.init(); // Initialize UI event listeners
+
+    // --- DOM Structure Refactoring ---
+    // Move the tour controls into the unified bottom panel container so they can be styled together.
+    const bottomPanelContainer = document.getElementById('bottom-panel-container');
+    const tourControls = document.getElementById('custom-tour-controls');
+    if (bottomPanelContainer && tourControls) {
+      bottomPanelContainer.appendChild(tourControls);
+    }
+    // --- End DOM Structure Refactoring ---
+
     this.setState('NO_ROUTE'); // Set initial state
     this.ui.setPoiButtonState(this.poisAreVisible); // Set initial POI button state
 
@@ -291,11 +319,58 @@ class App {
 
         // Update person label
         if (this.person.entity && this.person.entity.label) {
-          this.person.entity.label.text = labelText;
+            this.person.entity.label.text = timeString; // Simplified to just time
         }
 
         // Update custom UI display
         this.ui.updateTimeDisplay(timeString);
+
+        // NEW: Update StatsOverlay with live metrics
+        if (this.tourData && this.tourData.length > 0) {
+            const liveStats = {};
+            
+            let currentPoint;
+            // Check if tour is at the end
+            if (this.tourPercentage >= 1) {
+                currentPoint = this.tourData[this.tourData.length - 1];
+            } else {
+                // Find current point based on time
+                if (this.hasNativeTimestamps) {
+                    const currentIndex = this.tourData.findIndex(p => p.time && (Cesium.JulianDate.fromDate(p.time) > currentTime));
+                    currentPoint = this.tourData[Math.max(0, currentIndex - 1)];
+                } else {
+                    currentPoint = this.tourData.find(p => p.projectedTime >= elapsedTimeSeconds);
+                }
+            }
+
+            // Populate liveStats from the determined currentPoint
+            if (currentPoint) {
+                const totalTime = this.hasNativeTimestamps ? 
+                    (this.tourData[this.tourData.length - 1].time.getTime() - this.tourData[0].time.getTime()) / 1000
+                    : this.tourData[this.tourData.length - 1].projectedTime;
+                
+                liveStats.elapsedTime = this.tourPercentage >= 1 ? StatisticsCalculator.getDurationString(totalTime) : elapsedTimeString;
+                liveStats.distance = (currentPoint.cumulativeDistance / 1000).toFixed(2);
+                liveStats.ascent = (currentPoint.cumulativeElevationGain).toFixed(0);
+                liveStats.kcal = currentPoint.cumulativeKcal.toFixed(0);
+
+                if (this.hasNativeTimestamps) {
+                    liveStats.actualSpeed = currentPoint.actualSmoothedSpeedKmh.toFixed(1);
+                    liveStats.plannedSpeed = currentPoint.plannedSmoothedSpeed.toFixed(1);
+                    liveStats.actualVSpeed = (Math.round(currentPoint.actualSmoothedElevationRate / 10) * 10);
+                    liveStats.plannedVSpeed = (Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10);
+                    liveStats.actualKmEffortRate = currentPoint.actualSmoothedKmEffortRate.toFixed(1);
+                    liveStats.plannedKmEffortRate = currentPoint.plannedSmoothedKmEffortRate.toFixed(1);
+                } else {
+                    liveStats.plannedSpeed = currentPoint.plannedSmoothedSpeed.toFixed(1);
+                    liveStats.plannedVSpeed = (Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10);
+                    liveStats.plannedKmEffortRate = currentPoint.plannedSmoothedKmEffortRate.toFixed(1);
+                }
+            }
+            this.statsOverlay.updateReplayStats(liveStats, this.hasNativeTimestamps);
+        } else {
+            this.statsOverlay.updateReplayStats(null, this.hasNativeTimestamps); // Clear live stats if no tour data
+        }
       }
     });
   }
@@ -618,7 +693,7 @@ class App {
     this.tourData = planProfile.perPointData; 
 
     // --- 5. Final UI Update ---
-    this.ui.updateStatsContent({
+    this.statsOverlay.updateRouteStats({
       ...this.baseRouteStats,
       ...this.actualPerformanceStats,
       totalCalories: energyProfile.totalKcal.toFixed(0),
@@ -632,6 +707,17 @@ class App {
     this.tourController.prepareTour(this.tourData, this.routeCenter, this.maxRouteElevation);
 
     this.performanceTuner.requestRender();
+  }
+
+  /**
+   * Recalculates route analytics if a route is currently loaded.
+   * This is typically called when a setting affecting analytics changes (e.g., smoothing factor).
+   */
+  recalculateAnalytics() {
+    if (this.state === 'ROUTE_LOADED' || this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
+      logger.info('Recalculating route analytics due to settings change.');
+      this.handleAnalysisUpdate();
+    }
   }
 
   /**
@@ -741,6 +827,7 @@ class App {
     entitiesToRemove.forEach(entity => this.viewer.entities.remove(entity));
     this.poiService.clearPoisFromViewer(); // Delegate to service
     this.clearRefuelMarkers(); // New: Clear refuel markers
+    this.statsOverlay.hide(); // NEW: Hide stats overlay
 
     this.currentPoints = [];
     this.setState('NO_ROUTE');
@@ -888,6 +975,7 @@ class App {
 
     this.generateAndDisplayFilename(points);
     this._updateShareableUrl(route);
+    this.statsOverlay.show(); // NEW: Show stats overlay
   }
 
   /**

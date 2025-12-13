@@ -1,5 +1,6 @@
 import logger from './Logger.js';
 import SpeedController from './SpeedController.js';
+import SettingsManager from './SettingsManager.js';
 
 class TourController {
   constructor(viewer, person) {
@@ -7,9 +8,16 @@ class TourController {
     this.person = person;
     this.tour = null;
     this.speedController = new SpeedController(this.viewer.clock); // New SpeedController instance
-    this.cameraStrategy = 'overhead'; // Default strategy
-    this.cameraDistance = 1000; // Default distance
-    this.cameraPitch = -45; // Default pitch
+
+    // For cameraStrategy, we need to know when it changes to apply the new one.
+    this.cameraStrategy = SettingsManager.get('cameraStrategy');
+    SettingsManager.subscribe('cameraStrategy', (newStrategy) => {
+      if (this.cameraStrategy !== newStrategy) {
+        this.cameraStrategy = newStrategy;
+        this._applyCameraStrategy(); // CORRECTED: Always apply the strategy when it changes
+      }
+    });
+
     this.cameraListeners = {}; // To hold references to listeners
     this.uiTickListener = null; // To hold the UI tick listener
     this.onTick = () => {}; // Callback for UI updates
@@ -184,9 +192,9 @@ class TourController {
       const currentPos = this.person.entity.position.getValue(clock.currentTime);
       if (!Cesium.defined(currentPos)) return;
 
-      const pitch = Cesium.Math.toRadians(this.cameraPitch);
+      const pitch = Cesium.Math.toRadians(SettingsManager.get('cameraPitch'));
       const heading = this.viewer.camera.heading; // Keep the current heading
-      const range = this.cameraDistance;
+      const range = SettingsManager.get('cameraDistance');
 
       this.viewer.camera.lookAt(
         currentPos,
@@ -218,8 +226,8 @@ class TourController {
 
       // Calculate heading to complete one 360-degree rotation over the tour duration
       const heading = Cesium.Math.toRadians(tourProgress * 360);
-      const pitch = Cesium.Math.toRadians(this.cameraPitch);
-      const range = this.cameraDistance; // Use the new distance property
+      const pitch = Cesium.Math.toRadians(SettingsManager.get('cameraPitch'));
+      const range = SettingsManager.get('cameraDistance'); // Use the new distance property
 
       this.viewer.camera.lookAt(
         currentPos,
@@ -291,19 +299,15 @@ class TourController {
   }
 
   setCameraStrategy(strategy) {
-    if (strategy === this.cameraStrategy && this.viewer.trackedEntity === undefined) return; // Do nothing if strategy is the same and not tracking
-    this.cameraStrategy = strategy;
-    this._applyCameraStrategy();
+    SettingsManager.set('cameraStrategy', strategy);
   }
 
   setCameraDistance(distance) {
-    this.cameraDistance = distance;
-    // The active camera strategy listener will automatically pick up this new value on the next frame.
-    // There is no need to re-apply the strategy.
+    SettingsManager.set('cameraDistance', distance);
   }
 
   setCameraPitch(pitch) {
-    this.cameraPitch = pitch;
+    SettingsManager.set('cameraPitch', pitch);
   }
 
   // --- Custom Controls API ---

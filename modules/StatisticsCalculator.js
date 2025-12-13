@@ -1,4 +1,5 @@
 import logger from './Logger.js';
+import SettingsManager from './SettingsManager.js';
 
 class StatisticsCalculator {
   /**
@@ -79,13 +80,12 @@ class StatisticsCalculator {
    * @returns {object} An object with overall average metrics and augmented per-point data with actual speed.
    */
   static analyzePerformance(perPointData) {
-    const SMOOTHING_PERIOD_SAMPLES = 240;
-    const smoothingFactor = 2 / (SMOOTHING_PERIOD_SAMPLES + 1);
 
     if (!perPointData || perPointData.length < 2 || !perPointData[0].time) {
       return {
         overallAverageSpeed: null,
         overallAverageAscentRate: null,
+        overallAverageKmEffort: null,
         totalDurationString: "00:00:00",
         augmentedPerPointData: perPointData,
       };
@@ -98,9 +98,11 @@ class StatisticsCalculator {
 
     const totalDistanceKm = perPointData[perPointData.length - 1].cumulativeDistance / 1000;
     const totalElevationGainMeters = perPointData[perPointData.length - 1].cumulativeElevationGain;
+    const totalKmEffort = perPointData[perPointData.length - 1].cumulativeKmEffort;
 
     const overallAverageSpeed = totalTimeHours > 0 ? totalDistanceKm / totalTimeHours : 0;
     const overallAverageAscentRate = totalTimeHours > 0 ? totalElevationGainMeters / totalTimeHours : 0;
+    const overallAverageKmEffort = totalTimeHours > 0 ? totalKmEffort / totalTimeHours : 0;
 
     let emaSpeed = null;
     let emaEleRate = null;
@@ -132,7 +134,9 @@ class StatisticsCalculator {
             instKmRate = segmentKmEffort / segmentTimeHours;
         }
 
-        // 2. Apply EMA formula
+        // 2. Apply EMA formula with variable smoothing factor
+        const smoothingFactor = 2 / (Math.min(i, SettingsManager.get('smoothingFactor')) + 1);
+
         if (emaSpeed === null) { // First valid segment, prime the EMA
             emaSpeed = instSpeed;
             emaEleRate = instEleRate;
@@ -156,6 +160,7 @@ class StatisticsCalculator {
     return {
       overallAverageSpeed: overallAverageSpeed.toFixed(2),
       overallAverageAscentRate: overallAverageAscentRate.toFixed(2),
+      overallAverageKmEffort: overallAverageKmEffort.toFixed(2),
       augmentedPerPointData: augmentedPerPointData,
       totalDurationString: StatisticsCalculator.getDurationString(totalTimeSeconds),
     };

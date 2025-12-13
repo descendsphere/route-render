@@ -12,20 +12,27 @@ This project is a web-based application for visualizing GPX track data in a rich
 
 ## Key Features
 
+### What's New
+
+*   **Refined UI/UX for Stats Display:**
+    *   **Unified Bottom Panel:** The stats display and tour controls are now integrated into a single, cohesive panel at the bottom of the screen, improving visual organization and preventing overlap.
+    *   **Compact & Responsive Stats:** The route and replay stats are now even more compact, featuring key metrics with icons in the headers, a transposed table for replay stats, consistent font sizing, and units that automatically hide on mobile for better readability.
+    *   **Enhanced Interactivity:** The entire header of each stats section is now a clickable area for easy collapsing and expanding.
+*   **Improved POI Visualization:** Points of Interest (POI) icons and their labels are now correctly clamped to the ground, ensuring they appear naturally on the terrain.
+*   **Smarter Replay Stats:** When the tour reaches its end, the replay stats will now display the final, cumulative values for the route, providing a more meaningful summary.
+*   **Smoothing Factor Controls Fixed:** The UI controls for adjusting the smoothing factor are now fully functional.
+
+
 ### Performance Analysis & Simulation
 *   **Actual vs. Planned Analysis:** For GPX files with timestamps, the application provides a detailed, real-time comparison between your *actual* performance and your *planned* performance.
-*   **Live Performance Dashboard:** During playback, a detailed label on the traveler entity shows live, smoothed metrics including `Speed (Act/Plan)`, `Vertical Speed (Act/Plan)`, and `Km-effort Rate (Act/Plan)`.
-*   **Comprehensive Statistics:** The main panel displays key overall metrics, including:
-    *   Total Distance, Elevation Gain, and Km-effort.
-    *   For timestamped routes: Total Duration and Overall Average Speed/Ascent Rate.
-    *   `Est. Calories` burned.
-    *   `Planned Time` based on your profile.
+*   **Consolidated Statistics HUD:** All key metrics (overall, live, and planned) are displayed in a clean, centralized Heads-Up Display during tour playback.
 *   **Refuel Markers:** Automatically places markers on the map at locations where you are projected to hit your calorie-expenditure "refuel" threshold.
 *   **Sophisticated Smoothing:** Uses an Exponential Moving Average (EMA) to provide smooth and responsive readouts for all live rate-based metrics, filtering out GPS noise.
 
 ### General Features
-*   **Automatic Performance Tuning:** The application automatically adjusts rendering quality to maintain a target frame rate based on the user's selected profile ("Performance", "Balanced", or "Power Saver").
-*   **Shareable URLs:** The page URL automatically updates to include the loaded route (e.g., `?route_id=...` or `?url=...`), making it easy to copy and share a direct link to a specific route.
+*   **Automatic Performance Tuning:** The application automatically adjusts rendering quality *during tour playback* to maintain a target frame rate based on the user's selected profile ("Performance", "Balanced", or "Power Saver"). When not in playback, a high-quality preset is used.
+*   **Configurable Smoothing:** The EMA (Exponential Moving Average) smoothing factor used for all live metrics can be adjusted in real-time via the UI, allowing users to choose between smoother but less responsive, or more responsive but noisier, data.
+*   **Shareable URLs:** The page URL automatically updates to include the loaded route and can be used to pre-configure application state (e.g., camera perspective, zoom level, tour speed), making it easy to share a direct link to a specific route and view.
 *   **State Machine Architecture:** The application is driven by a robust state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) for predictable and stable UI behavior.
 *   **Mobile-First Custom Tour Controls:** A custom control bar provides a professional, touch-friendly experience with SVG icons, including:
     *   Play/Pause and Reset.
@@ -38,7 +45,6 @@ This project is a web-based application for visualizing GPX track data in a rich
 *   **Cinematic Tour:** Provides an automated fly-through of the route with multiple, dynamically switchable camera perspectives:
     *   **Overhead (Default):** A dynamic camera that orbits the traveler.
     *   **Third-Person:** A classic follow-cam view.
-    *   **Top-Down:** A static, bird's-eye view.
 *   **Time-Based Animation:** Utilizes Cesium's native clock for robust and smooth animation.
 *   **Smart Speed Control:** Automatically calculates a pleasant default playback speed, with a logarithmic slider for fine-tuned adjustments.
 *   **Data Enrichment:**

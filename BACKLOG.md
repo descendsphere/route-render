@@ -9,8 +9,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 - **[FEATURE] Manage Routes:** Add UI to allow renaming and deleting routes from the library.
 
 ### Core Functionality Enhancements
-
-- **[FEATURE] Accurate POI/Waypoint Altitude:** Use `Cesium.sampleTerrainMostDetailed` to fetch the correct terrain height for all POIs and waypoints, ensuring they are rendered at their true altitude instead of being clamped to the ground.
 - **[FIX] Prevent Camera Clipping on Mobile:**
   - **Problem:** The camera can clip through terrain during tour playback on mobile devices because collision detection is disabled by default for performance reasons (`screenSpaceCameraController.enableCollisionDetection = false`).
   - **Solution (Option 3 - Hybrid Approach):** Programmatically enable Cesium's built-in collision detection *only* during tour playback on mobile devices. This balances the need for performance during general map interaction with the requirement for a clean visual experience during the cinematic tour.
@@ -44,12 +42,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
     -   Remove the logic for applying the `.vertical-slider` class.
     -   Update CSS to style the new container and ensure the sliders within it are horizontal and visually consistent with the main time scrubber.
     -   Increase the width of all bottom sliders (the new three plus the existing time scrubber) to approximately 85% of the screen width to allow for more precise user control.
-- **[UI/UX] Remove "Top-Down" Camera Strategy:**
-  - **Reason:** The "Top-Down" camera strategy provides a view that can be replicated by setting the manual pitch control to -90° in other camera modes (like "Overhead"). Removing this redundant strategy simplifies the camera selection UI.
-  - **Scope:**
-    -   **`index.html`:** Remove the "Top-Down" `<option>` from the camera strategy `<select>` element.
-    -   **`TourController.js`:** Remove the "top-down" case from the camera strategy implementation logic.
-    -   **Documentation:** Update `DESIGN.md` and other relevant documents to reflect the removal of this strategy.
 
 ### File Management
 
@@ -87,6 +79,19 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[UI/UX] Remove "Top-Down" Camera Strategy:**
+  - **Reason:** The "Top-Down" camera strategy provides a view that can be replicated by setting the manual pitch control to -90° in other camera modes (like "Overhead"). Removing this redundant strategy simplifies the camera selection UI.
+  - **Scope:**
+    -   **`index.html`:** Remove the "Top-Down" `<option>` from the camera strategy `<select>` element.
+    -   **`TourController.js`:** Remove the "top-down" case from the camera strategy implementation logic.
+    -   **Documentation:** Update `DESIGN.md` and other relevant documents to reflect the removal of this strategy.
+
+- **[EPIC] Configuration and UI Refactoring:** A foundational refactoring to centralize all application settings, enabling new features like URL-based configuration and enhancing maintainability. This epic also includes a significant UI overhaul for how statistics are presented.
+  - **[REFACTOR] Centralize Parameters and Constants:** Created a new `SettingsManager.js` module to act as a single source of truth for all configurable parameters, removing hard-coded values from other modules.
+  - **[FEATURE] Make Parameters Configurable via URL:** Extended the `SettingsManager` to parse URL query parameters, allowing users to share links that pre-configure the application state (e.g., camera, speed).
+  - **[FEATURE] Consolidated Statistics Overlay:** Rearchitected the UI to display all route statistics (both static and live) in a new, consolidated overlay layer (HUD), replacing the traveler billboard label and the stats section of the side panel.
+  - **[FEATURE] Configurable Smoothing Factor:** Exposed the number of points used for the moving average calculation as a user-configurable parameter via the UI (`--/-/+/++` buttons) and the new settings manager.
+  - **[REFACTOR] Refined Performance Tuner Logic:** Modified the `PerformanceTuner` to be active *only* during `TOUR_PLAYING` state. When playback stops, rendering quality reverts to a default high-quality preset.
 - **[EPIC] Performance Analysis & Simulation:** Implemented a comprehensive analysis suite for route planning and post-activity review.
   - **[FEATURE] Detailed Statistics:** Calculates and displays total distance, elevation gain, Km-effort, Est. Calories, Planned Time, and for timestamped routes, Total Duration and Average Speed/Vertical Speed.
   - **[FEATURE] Live Performance Dashboard:** The traveler label now shows a rich, context-aware dashboard. For timestamped routes, it displays a real-time "Actual vs. Planned" comparison for Speed, Vertical Speed, and Km-effort Rate.
@@ -141,3 +146,26 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 - **[FIXED] Remove Camera Info Section:** The "Camera Info" section has been removed from the UI.
 - **[FIXED] Concise Style Controls:** Redesigned the "Style" section to be more compact and use `+/-` buttons.
 - **[REFACTOR] Consistent POI/Waypoint Labels:** Updated the styling of POI and Waypoint labels.
+
+- **[UI/UX] Unified Bottom Panel for Stats and Tour Controls:**
+  - **Problem:** Stats overlay and tour controls were separate, overlapping panels.
+  - **Solution:** Restructured the DOM and CSS to place both into a single, cohesive bottom container, managed by JavaScript, preventing overlap and enhancing visual consistency.
+- **[UI/UX] Compact Stats Display Refinements:**
+  - **Solution:** Reworked "Route Stats" and "Replay Stats" content for improved compactness and readability:
+    -   Moved key summary figures (e.g., Distance, Elevation, Calories, Km-effort, Elapsed Time) to section headers, including consistent icons (↔️, ▲, 🔥, 👟, ⏱️).
+    -   Transposed "Replay Stats" table.
+    -   Standardized font sizes (13px) and weights (normal) for all metric labels and values across both stats sections.
+    -   Implemented responsive unit display (units hidden on mobile devices to save space).
+    *   Expanded clickable area for stats section toggles to include summary metrics, improving usability.
+- **[FIX] "Actual" Time NaN in Route Stats:**
+  - **Problem:** 'Actual' time in Route Stats displayed 'NaN' when a route had native timestamps.
+  - **Solution:** Corrected the `updateRouteStats` method to remove an erroneous `_formatTime()` wrapper around `stats.totalDurationString`, ensuring correct time display.
+- **[FIX] Smoothing Factor Controls Functional:**
+  - **Problem:** The UI controls for adjusting the smoothing factor were unresponsive.
+  - **Solution:** Verified and ensured all UI elements, `SettingsManager` subscriptions, and `app.js` recalculation triggers were correctly wired, restoring functionality.
+- **[FEATURE] POI Icons Clamped to Ground:**
+  - **Problem:** POI icons/labels floated at a constant height above the terrain, appearing disconnected.
+  - **Solution:** Modified `PoiService.js` to remove hardcoded altitude and correctly apply `heightReference: Cesium.HeightReference.CLAMP_TO_GROUND` to both POI billboards and labels, ensuring they are visually attached to the ground.
+- **[FEATURE] Replay Stats Show Accumulated Values at Tour End:**
+  - **Problem:** Replay stats displayed zero or inconsistent values when the tour reached its end point.
+  - **Solution:** Modified `app.js`'s `postRender` listener to detect tour completion (100% progress) and, at that point, display the final, cumulative values from the last point of the route analysis, providing a meaningful summary.
