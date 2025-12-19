@@ -52,8 +52,10 @@ This document specifies the functional and non-functional requirements for the G
 ### NFR-1: Performance
 
 *   **NFR-1.1:** The application should load and become interactive within 5 seconds on a standard broadband connection.
-*   **NFR-1.2:** The 3D globe and cinematic tour animations must maintain a frame rate of at least 30 frames per second (FPS) on a modern desktop computer.
-*   **NFR-1.3:** The automatic performance tuning system shall only be active during tour playback and shall revert to a high-quality preset when not in playback.
+*   **NFR-1.2:** During tour playback, the application shall employ an automatic performance tuner to balance frame rate and visual quality.
+*   **NFR-1.3:** The tuner will aim to meet the target frame rate (FPS) defined by the user-selected profile ('Performance', 'Balanced', or 'Power Saver').
+*   **NFR-1.4:** For the 'Balanced' and 'Power Saver' profiles, the tuner will respect a maximum quality ceiling, preventing it from using the most resource-intensive rendering settings even on powerful hardware.
+*   **NFR-1.5:** The automatic performance tuning system shall only be active during tour playback. When not in playback, the application will revert to a default high-quality preset.
 
 ### NFR-2: Usability
 

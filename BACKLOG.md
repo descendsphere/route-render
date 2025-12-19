@@ -79,6 +79,9 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[EPIC] Performance Tuning & Debugging:**
+  - **[FEATURE] Intelligent Performance Tuning:** Rearchitected the `PerformanceTuner` to be configuration-driven. The new system uses a target FPS to throttle the engine and a dynamic quality ceiling for each profile ('Performance', 'Balanced', 'Power Saver') to intelligently balance frame rate and power consumption, preventing resource over-utilization on high-end hardware.
+
 - **[UI/UX] Remove "Top-Down" Camera Strategy:**
   - **Reason:** The "Top-Down" camera strategy provides a view that can be replicated by setting the manual pitch control to -90° in other camera modes (like "Overhead"). Removing this redundant strategy simplifies the camera selection UI.
   - **Scope:**

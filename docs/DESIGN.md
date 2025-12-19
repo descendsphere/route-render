@@ -167,38 +167,44 @@ The `TourController` manages a dictionary of camera strategy functions. When a s
 
 ## 8. Performance Tuning Architecture
 
-To ensure a smooth user experience across a wide range of devices, the application features a sophisticated automatic performance tuning system.
+To ensure a smooth user experience across a wide range of devices, the application features a sophisticated, configuration-driven automatic performance tuning system, managed entirely by the `PerformanceTuner` module.
 
 ### 8.1. On-Demand Rendering
-The application initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental change that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via a call to `viewer.scene.requestRender()`. This dramatically reduces CPU/GPU usage when the application is idle. All functions that cause a visual change (e.g., updating a style, scrubbing the timeline, toggling visibility) now conclude with a `requestRender()` call.
+The application initializes the Cesium Viewer with `requestRenderMode: true`. This is a fundamental optimization that stops the default continuous render loop. A new frame is now only rendered when explicitly requested via `viewer.scene.requestRender()`, dramatically reducing CPU/GPU usage when the application is idle.
 
-### 8.2. `PerformanceTuner` Module
-A new `PerformanceTuner.js` module encapsulates all performance-related logic. It is designed as an "autopilot" for performance.
+### 8.2. The `PerformanceTuner` Module
+The `PerformanceTuner.js` module encapsulates all performance-related logic. It is designed as an "autopilot" that intelligently balances rendering quality and frame rate based on a user-selected profile.
 
-#### 7.2.1. Performance Profiles (The Goal)
-The user is presented with a single, simple "Performance Profile" selector in the UI, which defines their desired experience:
-*   **`Prioritize Speed`:** Aims for the highest possible frame rate.
-*   **`Balanced`:** Aims for a smooth frame rate with good visual quality.
-*   **`Prioritize Quality`:** Aims for the best possible visual quality, even at a lower frame rate.
+#### 8.2.1. Configuration-Driven Tuning
+The tuner's behavior is defined by a single, clean `TUNING_CONFIG` object. This allows for easy adjustments to the tuning logic without changing the code. The configuration has two main parts:
 
-Each profile corresponds to a target FPS range (e.g., 30-45 FPS for "Balanced"), which is defined in a central `TUNING_CONFIG` object.
+1.  **Global Thresholds:** Percentage-based thresholds that define the tuner's sensitivity.
+    *   `upperThresholdPercent`: The tuner considers increasing quality if the average FPS is above this percentage of the target (e.g., `0.95`).
+    *   `lowerThresholdPercent`: The tuner *must* decrease quality if the average FPS drops below this percentage of the target (e.g., `0.80`).
 
-#### 7.2.2. Quality Presets (The Tools)
-The `PerformanceTuner` contains a private, ordered array of quality "presets". This array acts as a granular "ladder" of quality levels, from lowest to highest. Each preset is a collection of concrete rendering settings (e.g., `resolutionScaleFactor`, `maximumScreenSpaceError`, `fxaa`).
+2.  **Performance Profiles:** The user selects a profile in the UI, which defines their desired experience.
+    *   `targetFrameRate`: An explicit FPS cap sent to `viewer.targetFrameRate` to throttle the engine.
+    *   `maxQualityPercent`: A percentage that defines the "quality ceiling" for that profile, preventing it from using the most expensive rendering presets.
 
-#### 7.2.3. The Monitor-Analyze-Act Loop
-The core of the auto-tuner is a feedback loop that runs continuously:
-1.  **Monitor:** A `postRender` event listener accurately measures the average FPS over a set interval (e.g., every 1-2 seconds).
-2.  **Analyze:** The measured FPS is compared against the target range of the user's currently selected Performance Profile.
-3.  **Act:**
-    *   If the FPS is below the target range, the tuner moves down the quality ladder by applying a lower-quality preset.
-    *   If the FPS is above the target range, the tuner moves up the quality ladder by applying a higher-quality preset.
-    *   A "debounce" delay is used to prevent the settings from changing too frequently.
+Example profiles:
+*   **Performance:** High `targetFrameRate` (e.g., 60) and `maxQualityPercent: 1.0` (can use 100% of presets).
+*   **Balanced:** Medium `targetFrameRate` (e.g., 30) and `maxQualityPercent: 0.65` (uses up to ~65% of presets).
+*   **Power Saver:** Low `targetFrameRate` (e.g., 20) and `maxQualityPercent: 0.45` (uses up to ~45% of presets).
 
-This system ensures that the application always tries to deliver the best possible visual quality while respecting the user's stated performance goals.
+#### 8.2.2. The Monitor-Analyze-Act Loop
+The core of the auto-tuner is a feedback loop that runs continuously during tour playback:
+1.  **Set Target:** When a profile is activated, the tuner immediately sets `viewer.targetFrameRate` to the profile's `targetFrameRate`, providing a hard cap on FPS.
+2.  **Monitor:** A `postRender` event listener measures the average FPS over a set interval.
+3.  **Analyze:** Before making a decision, the tuner dynamically calculates its bounds based on the current profile:
+    *   `minThreshold = profile.targetFrameRate * TUNING_CONFIG.lowerThresholdPercent`
+    *   `maxThreshold = profile.targetFrameRate * TUNING_CONFIG.upperThresholdPercent`
+    *   `maxQualityIndex = Math.floor((presets.length - 1) * profile.maxQualityPercent)`
+4.  **Act:**
+    *   If `avgFps < minThreshold`, the system is struggling. The tuner moves down the quality ladder by applying a lower-quality preset.
+    *   If `avgFps > maxThreshold`, the system has headroom. The tuner moves up the quality ladder, but **only if the current quality index is below the calculated `maxQualityIndex` ceiling**.
+    *   A "debounce" delay prevents the settings from changing too frequently.
 
-### 8.3. UI Controls
-The "Performance" section in the side panel has been simplified to a single dropdown menu to select the desired "Performance Profile". All granular controls have been removed to provide a cleaner, more user-friendly experience.
+This architecture provides a highly nuanced and predictable system that respects both FPS targets and quality/power-saving goals for each distinct user profile.
 
 ## 9. Route Visualization
 

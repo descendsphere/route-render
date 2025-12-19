@@ -30,7 +30,7 @@ This project is a web-based application for visualizing GPX track data in a rich
 *   **Sophisticated Smoothing:** Uses an Exponential Moving Average (EMA) to provide smooth and responsive readouts for all live rate-based metrics, filtering out GPS noise.
 
 ### General Features
-*   **Automatic Performance Tuning:** The application automatically adjusts rendering quality *during tour playback* to maintain a target frame rate based on the user's selected profile ("Performance", "Balanced", or "Power Saver"). When not in playback, a high-quality preset is used.
+*   **Intelligent Performance Tuning:** The application features a sophisticated auto-tuner that, during tour playback, intelligently balances frame rate and visual quality. The 'Performance' profile aims for the highest visual quality while maintaining a high FPS. The 'Balanced' and 'Power Saver' profiles use a lower target FPS and actively cap the maximum rendering quality to ensure a smooth experience while conserving system resources, even on powerful hardware.
 *   **Configurable Smoothing:** The EMA (Exponential Moving Average) smoothing factor used for all live metrics can be adjusted in real-time via the UI, allowing users to choose between smoother but less responsive, or more responsive but noisier, data.
 *   **Shareable URLs:** The page URL automatically updates to include the loaded route and can be used to pre-configure application state (e.g., camera perspective, zoom level, tour speed), making it easy to share a direct link to a specific route and view.
 *   **State Machine Architecture:** The application is driven by a robust state machine (`NO_ROUTE`, `LOADING`, `ROUTE_LOADED`, `TOUR_PLAYING`, `TOUR_PAUSED`) for predictable and stable UI behavior.

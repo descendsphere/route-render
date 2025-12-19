@@ -1,12 +1,23 @@
 import logger from './Logger.js';
 
 const TUNING_CONFIG = {
-  monitoringInterval: 1000, // Check every 2 seconds
-  debounceDelay: 1500,      // Wait 5 seconds before changing preset
+  monitoringInterval: 250, // Checking interval in millisecond
+  debounceDelay: 2000,      // Waiting time in millisecond before changing preset
+  upperThresholdPercent: 0.95, // Increase quality if FPS > 95% of target
+  lowerThresholdPercent: 0.80, // Decrease quality if FPS < 80% of target
   profiles: {
-    'Performance': { lowerBound: 30, upperBound: 60 },
-    'Balanced': { lowerBound: 20, upperBound: 30 },
-    'Power Saver': { lowerBound: 10, upperBound: 20 },
+    'Performance': {
+      targetFrameRate: 60,
+      maxQualityPercent: 1.0,  // Allows using up to 100% of available quality presets
+    },
+    'Balanced': {
+      targetFrameRate: 30,
+      maxQualityPercent: 0.65, // Caps quality at ~65% of the maximum
+    },
+    'Power Saver': {
+      targetFrameRate: 20,
+      maxQualityPercent: 0.45, // Caps quality at ~45% of the maximum
+    },
   }
 };
 
@@ -31,7 +42,16 @@ class PerformanceTuner {
     this.settings = {}; // Will be populated by the default preset
 
     this._presets = [
-      // Level 0 (Lowest)
+      {
+        resolutionScaleFactor: 0.25,
+        maximumScreenSpaceError: 8,
+        fxaa: false,
+        enableLighting: false,
+        fogEnabled: false,
+        shadows: false,
+        atmosphere: false,
+        sunAndMoon: false,
+      },
       {
         resolutionScaleFactor: 0.5,
         maximumScreenSpaceError: 8,
@@ -42,7 +62,16 @@ class PerformanceTuner {
         atmosphere: false,
         sunAndMoon: false,
       },
-      // Level 1 (Low)
+      {
+        resolutionScaleFactor: 0.5,
+        maximumScreenSpaceError: 4,
+        fxaa: false,
+        enableLighting: false,
+        fogEnabled: false,
+        shadows: false,
+        atmosphere: false,
+        sunAndMoon: false,
+      },
       {
         resolutionScaleFactor: 0.5,
         maximumScreenSpaceError: 2,
@@ -54,58 +83,17 @@ class PerformanceTuner {
         sunAndMoon: false,
       },
       {
-        resolutionScaleFactor: 0.6,
-        maximumScreenSpaceError: 2,
-        fxaa: false,
-        enableLighting: false,
-        fogEnabled: false,
-        shadows: false,
-        atmosphere: false,
-        sunAndMoon: false,
-      },
-      {
-        resolutionScaleFactor: 0.65,
-        maximumScreenSpaceError: 2,
-        fxaa: false,
-        enableLighting: false,
-        fogEnabled: false,
-        shadows: false,
-        atmosphere: false,
-        sunAndMoon: false,
-      },
-      {
-        resolutionScaleFactor: 0.7,
-        maximumScreenSpaceError: 2,
-        fxaa: false,
-        enableLighting: false,
-        fogEnabled: false,
-        atmosphere: false,
-        shadows: false,
-        sunAndMoon: false,
-      },
-      {
-        resolutionScaleFactor: 0.7,
+        resolutionScaleFactor: 0.5,
         maximumScreenSpaceError: 1,
         fxaa: false,
         enableLighting: false,
         fogEnabled: false,
-        atmosphere: false,
         shadows: false,
+        atmosphere: false,
         sunAndMoon: false,
       },
       {
-        resolutionScaleFactor: 0.8,
-        maximumScreenSpaceError: 1,
-        fxaa: false,
-        enableLighting: false,
-        fogEnabled: false,
-        atmosphere: false,
-        shadows: false,
-        sunAndMoon: false,
-      },
-      // Level 2 (Medium)
-      {
-        resolutionScaleFactor: 0.9,
+        resolutionScaleFactor: 0.75,
         maximumScreenSpaceError: 1,
         fxaa: false,
         enableLighting: false,
@@ -185,17 +173,7 @@ class PerformanceTuner {
         sunAndMoon: true,
       },
       {
-        resolutionScaleFactor: 1.2,
-        maximumScreenSpaceError: 1,
-        fxaa: true,
-        enableLighting: true,
-        fogEnabled: true,
-        atmosphere: true,
-        shadows: true,
-        sunAndMoon: true,
-      },
-      {
-        resolutionScaleFactor: 1.8,
+        resolutionScaleFactor: 1.5,
         maximumScreenSpaceError: 1,
         fxaa: true,
         enableLighting: true,
@@ -206,17 +184,6 @@ class PerformanceTuner {
       },
       {
         resolutionScaleFactor: 2.0,
-        maximumScreenSpaceError: 1,
-        fxaa: true,
-        enableLighting: true,
-        fogEnabled: true,
-        atmosphere: true,
-        shadows: true,
-        sunAndMoon: true,
-      },
-      // Level 4 (Ultra)
-      {
-        resolutionScaleFactor: 2.2,
         maximumScreenSpaceError: 1,
         fxaa: true,
         enableLighting: true,
@@ -291,9 +258,13 @@ class PerformanceTuner {
    * @param {string} profileName - The name of the profile to set.
    */
   setProfile(profileName) {
-    if (TUNING_CONFIG.profiles[profileName]) {
+    const profile = TUNING_CONFIG.profiles[profileName];
+    if (profile) {
       logger.info(`Setting performance profile to: ${profileName}`);
       this.currentProfile = profileName;
+      if (this._isActive) {
+        this.viewer.targetFrameRate = profile.targetFrameRate;
+      }
     } else {
       logger.warn(`Attempted to set unknown performance profile: ${profileName}`);
     }
@@ -306,7 +277,6 @@ class PerformanceTuner {
    */
   _adjustPreset(avgFps) {
     if (this.isDebouncing) {
-      logger.info('Debouncing, no adjustment.');
       return;
     }
 
@@ -316,30 +286,24 @@ class PerformanceTuner {
       return;
     }
 
-    logger.info(`avgFps: ${avgFps.toFixed(1)}, lowerBound: ${profile.lowerBound}, upperBound: ${profile.upperBound}, currentPresetIndex: ${this.currentPresetIndex}`);
+    const maxThreshold = profile.targetFrameRate * TUNING_CONFIG.upperThresholdPercent;
+    const minThreshold = profile.targetFrameRate * TUNING_CONFIG.lowerThresholdPercent;
+    const maxQualityIndex = Math.floor((this._presets.length - 1) * profile.maxQualityPercent);
+
     let newIndex = this.currentPresetIndex;
 
-    // Logic to move up or down the presets array
-    if (avgFps < profile.lowerBound) {
+    if (avgFps < minThreshold) {
       if (this.currentPresetIndex > 0) {
-        logger.info('Decision: move down');
         newIndex--;
-      } else {
-        logger.info('Decision: at lowest preset, no change.');
       }
-    } else if (avgFps > profile.upperBound) {
-      if (this.currentPresetIndex < this._presets.length - 1) {
-        logger.info('Decision: move up');
+    } else if (avgFps > maxThreshold) {
+      if (this.currentPresetIndex < maxQualityIndex) {
         newIndex++;
-      } else {
-        logger.info('Decision: at highest preset, no change.');
       }
-    } else {
-      logger.info('Decision: FPS within target range, no change.');
     }
 
     if (newIndex !== this.currentPresetIndex) {
-      logger.info(`FPS (${avgFps.toFixed(1)}) is outside of range for '${this.currentProfile}' profile. Changing preset from level ${this.currentPresetIndex} to ${newIndex}.`);
+      logger.info(`FPS (${avgFps.toFixed(1)}) triggered adjustment for '${this.currentProfile}' profile. Changing preset from level ${this.currentPresetIndex} to ${newIndex}.`);
       this.applyPreset(newIndex);
       this.currentPresetIndex = newIndex;
 
@@ -383,15 +347,20 @@ class PerformanceTuner {
   activate() {
     logger.info('PerformanceTuner activated.');
     this._isActive = true;
+    const profile = TUNING_CONFIG.profiles[this.currentProfile];
+    if (profile) {
+      this.viewer.targetFrameRate = profile.targetFrameRate;
+    }
   }
 
   /**
-   * Deactivates the performance auto-tuner and applies the highest quality preset.
+   * Deactivates the performance auto-tuner and applies a high-quality preset.
    */
   deactivate() {
     logger.info('PerformanceTuner deactivated, applying high-quality preset.');
     this._isActive = false;
-    this.currentPresetIndex = this._presets.length - 1;
+    this.viewer.targetFrameRate = undefined;
+    this.currentPresetIndex = this._presets.length - 1; // Revert to highest quality
     this.applyPreset(this.currentPresetIndex);
   }
 }
