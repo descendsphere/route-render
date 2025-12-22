@@ -122,7 +122,8 @@ class StatisticsCalculator {
         const p2 = point;
 
         // 1. Calculate instantaneous values for the current segment
-        const segmentTimeHours = (p2.time.getTime() - p1.time.getTime()) / (1000 * 3600);
+        const segmentTimeSeconds = (p2.time.getTime() - p1.time.getTime()) / 1000; // Calculate segment time in seconds
+        const segmentTimeHours = segmentTimeSeconds / 3600;
         const segmentDistKm = (p2.cumulativeDistance - p1.cumulativeDistance) / 1000;
         const segmentEleGain = (p2.ele || 0) - (p1.ele || 0);
         const segmentKmEffort = p2.cumulativeKmEffort - p1.cumulativeKmEffort;
@@ -134,17 +135,22 @@ class StatisticsCalculator {
             instKmRate = segmentKmEffort / segmentTimeHours;
         }
 
-        // 2. Apply EMA formula with variable smoothing factor
-        const smoothingFactor = 2 / (Math.min(i, SettingsManager.get('smoothingFactor')) + 1);
+        // Calculate N and alpha based on smoothing period and segment time
+        const smoothingPeriodSeconds = SettingsManager.get('smoothingPeriodSeconds');
+        let N = 1; // Default N to 1 (alpha = 1.0, no smoothing)
+        if (segmentTimeSeconds > 0) {
+            N = Math.max(1, smoothingPeriodSeconds / segmentTimeSeconds);
+        }
+        const alpha = 2 / (N + 1); // Calculate alpha for EMA
 
         if (emaSpeed === null) { // First valid segment, prime the EMA
             emaSpeed = instSpeed;
             emaEleRate = instEleRate;
             emaKmRate = instKmRate;
         } else {
-            emaSpeed = (instSpeed * smoothingFactor) + (emaSpeed * (1 - smoothingFactor));
-            emaEleRate = (instEleRate * smoothingFactor) + (emaEleRate * (1 - smoothingFactor));
-            emaKmRate = (instKmRate * smoothingFactor) + (emaKmRate * (1 - smoothingFactor));
+            emaSpeed = (instSpeed * alpha) + (emaSpeed * (1 - alpha));
+            emaEleRate = (instEleRate * alpha) + (emaEleRate * (1 - alpha));
+            emaKmRate = (instKmRate * alpha) + (emaKmRate * (1 - alpha));
         }
 
         return {

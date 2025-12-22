@@ -360,7 +360,7 @@ class PerformanceTuner {
     logger.info('PerformanceTuner deactivated, applying high-quality preset.');
     this._isActive = false;
     this.viewer.targetFrameRate = undefined;
-    this.currentPresetIndex = this._presets.length - 1; // Revert to highest quality
+    this.currentPresetIndex = Math.ceil(this._presets.length * 0.8) - 1; // Revert to 80% highest quality
     this.applyPreset(this.currentPresetIndex);
   }
 }

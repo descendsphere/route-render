@@ -36,12 +36,12 @@ class SettingsManager {
             min: -90,
             max: 0,
         },
-        smoothingFactor: {
+        smoothingPeriodSeconds: {
             type: 'number',
-            defaultValue: 100,
+            defaultValue: 10, // Default to 10 seconds smoothing
             url: true,
-            min: 1,
-            max: 500,
+            min: 1, // Minimum 1 second smoothing
+            max: 60, // Maximum 60 seconds smoothing
         },
         tourSpeed: {
             type: 'number',

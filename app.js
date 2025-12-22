@@ -706,6 +706,17 @@ class App {
     // --- 6. Prepare Tour ---
     this.tourController.prepareTour(this.tourData, this.routeCenter, this.maxRouteElevation);
 
+    // Force a scene update by slightly "jiggling" the camera.
+    // This is more robust than just requesting renders, as it forces the engine
+    // to re-evaluate transforms and label positions.
+//    const currentHeading = this.viewer.camera.heading;
+//    this.viewer.camera.setView({
+//        orientation: {
+//            heading: currentHeading + 0.000001, // A tiny, imperceptible change
+//            pitch: this.viewer.camera.pitch,
+//            roll: this.viewer.camera.roll
+//        }
+//    });
     this.performanceTuner.requestRender();
   }
 

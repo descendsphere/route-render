@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>GPX 3D Player</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <!--link href="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Widgets/widgets.css" rel="stylesheet"-->
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.136/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
   <link href="style.css" rel="stylesheet">
 </head>
 <body>
@@ -86,15 +87,14 @@
                       <option value="Power Saver">Power Saver</option>
                     </select>
                   </div>
-                  <!-- NEW: Smoothing Factor Controls -->
                   <div class="control-section">
-                    <label>Smoothing Factor:</label>
+                    <label>Smoothing Period:</label>
                     <div class="number-input-widget">
-                      <button id="smoothing-factor-decrement-large" class="adjust-button">--</button>
-                      <button id="smoothing-factor-decrement" class="adjust-button">-</button>
-                      <span id="smoothing-factor-display">100</span>
-                      <button id="smoothing-factor-increment" class="adjust-button">+</button>
-                      <button id="smoothing-factor-increment-large" class="adjust-button">++</button>
+                      <button id="smoothing-period-decrement-large" class="adjust-button">--</button>
+                      <button id="smoothing-period-decrement" class="adjust-button">-</button>
+                      <span id="smoothing-period-display">10s</span>
+                      <button id="smoothing-period-increment" class="adjust-button">+</button>
+                      <button id="smoothing-period-increment-large" class="adjust-button">++</button>
                     </div>
                   </div>
                 </div>
@@ -248,7 +248,8 @@
   <!-- The unified bottom panel will be assembled here -->
 </div>
 
-<script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script>
+<!--script src="https://cesium.com/downloads/cesiumjs/releases/1.134/Build/Cesium/Cesium.js"></script-->
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.136/Build/Cesium/Cesium.js"></script>
 <script src="https://unpkg.com/gpxparser@3.0.8/dist/GPXParser.min.js"></script>
 <script src="https://unpkg.com/loglevel/dist/loglevel.min.js"></script>
 <script type="module" src="app.js"></script>

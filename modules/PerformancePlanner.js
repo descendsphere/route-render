@@ -74,17 +74,24 @@ class PerformancePlanner {
         
         const instPlannedSpeedKmh = adjustedSpeedMps * 3.6;
 
-        const smoothingFactor = 2 / (Math.min(i, SettingsManager.get('smoothingFactor')) + 1);
+        // Calculate N and alpha based on smoothing period and segment time
+        const smoothingPeriodSeconds = SettingsManager.get('smoothingPeriodSeconds');
+        let N = 1; // Default N to 1 (alpha = 1.0, no smoothing)
+        if (segmentTimeSec > 0) {
+            N = Math.max(1, smoothingPeriodSeconds / segmentTimeSec);
+        }
+        const alpha = 2 / (N + 1); // Calculate alpha for EMA
 
         if (emaPlannedSpeed === null) {
             emaPlannedSpeed = instPlannedSpeedKmh;
             emaPlannedEleRate = instPlannedEleRate;
             emaPlannedKmRate = instPlannedKmRate;
         } else {
-            emaPlannedSpeed = (instPlannedSpeedKmh * smoothingFactor) + (emaPlannedSpeed * (1 - smoothingFactor));
-            emaPlannedEleRate = (instPlannedEleRate * smoothingFactor) + (emaPlannedEleRate * (1 - smoothingFactor));
-            emaPlannedKmRate = (instPlannedKmRate * smoothingFactor) + (emaPlannedKmRate * (1 - smoothingFactor));
+            emaPlannedSpeed = (instPlannedSpeedKmh * alpha) + (emaPlannedSpeed * (1 - alpha));
+            emaPlannedEleRate = (instPlannedEleRate * alpha) + (emaPlannedEleRate * (1 - alpha));
+            emaPlannedKmRate = (instPlannedKmRate * alpha) + (emaPlannedKmRate * (1 - alpha));
         }
+
 
         augmentedData.push({
             ...p2,

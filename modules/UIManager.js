@@ -85,11 +85,11 @@ class UIManager {
     this.clearStorageButton = document.getElementById('clear-storage-button');
     this.routeLibrarySelect = document.getElementById('route-library-select');
     this.performanceProfileInput = document.getElementById('performance-profile');
-    this.smoothingFactorDecrementLarge = document.getElementById('smoothing-factor-decrement-large');
-    this.smoothingFactorDecrement = document.getElementById('smoothing-factor-decrement');
-    this.smoothingFactorDisplay = document.getElementById('smoothing-factor-display');
-    this.smoothingFactorIncrement = document.getElementById('smoothing-factor-increment');
-    this.smoothingFactorIncrementLarge = document.getElementById('smoothing-factor-increment-large');
+    this.smoothingPeriodDecrementLarge = document.getElementById('smoothing-period-decrement-large');
+    this.smoothingPeriodDecrement = document.getElementById('smoothing-period-decrement');
+    this.smoothingPeriodDisplay = document.getElementById('smoothing-period-display');
+    this.smoothingPeriodIncrement = document.getElementById('smoothing-period-increment');
+    this.smoothingPeriodIncrementLarge = document.getElementById('smoothing-period-increment-large');
     this.advancedControls = document.getElementById('advanced-controls');
     this.advancedControlsHeader = this.advancedControls.querySelector('.collapsible-header');
     this.advancedControlsContent = this.advancedControls.querySelector('.collapsible-content');
@@ -303,11 +303,11 @@ class UIManager {
         }
     });
 
-    // NEW: Smoothing Factor Listeners
-    this.smoothingFactorDecrementLarge.addEventListener('click', () => this._adjustSmoothingFactor(-5));
-    this.smoothingFactorDecrement.addEventListener('click', () => this._adjustSmoothingFactor(-1));
-    this.smoothingFactorIncrement.addEventListener('click', () => this._adjustSmoothingFactor(1));
-    this.smoothingFactorIncrementLarge.addEventListener('click', () => this._adjustSmoothingFactor(5));
+    // NEW: Smoothing Period Listeners
+    this.smoothingPeriodDecrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(-10));
+    this.smoothingPeriodDecrement.addEventListener('click', () => this._adjustSmoothingPeriod(-1));
+    this.smoothingPeriodIncrement.addEventListener('click', () => this._adjustSmoothingPeriod(1));
+    this.smoothingPeriodIncrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(10));
 
     this._initializeSettingsBasedUI();
   }
@@ -515,22 +515,22 @@ class UIManager {
   }
 
   /**
-   * Adjusts the smoothing factor by a given step and updates the SettingsManager.
-   * @param {number} step - The amount to adjust the smoothing factor by.
+   * Adjusts the smoothing period by a given step and updates the SettingsManager.
+   * @param {number} step - The amount in seconds to adjust the smoothing period by.
    * @private
    */
-  _adjustSmoothingFactor(step) {
-    const currentValue = SettingsManager.get('smoothingFactor');
+  _adjustSmoothingPeriod(step) {
+    const currentValue = SettingsManager.get('smoothingPeriodSeconds');
     const newValue = currentValue + step;
-    SettingsManager.set('smoothingFactor', newValue);
+    SettingsManager.set('smoothingPeriodSeconds', newValue);
   }
 
   /**
-   * Updates the display of the smoothing factor.
-   * @param {number} value - The new smoothing factor value.
+   * Updates the display of the smoothing period.
+   * @param {number} value - The new smoothing period value in seconds.
    */
-  updateSmoothingFactorDisplay(value) {
-    this.smoothingFactorDisplay.textContent = value.toString();
+  updateSmoothingPeriodDisplay(value) {
+    this.smoothingPeriodDisplay.textContent = `${value}s`;
   }
 
   /**
@@ -572,9 +572,9 @@ class UIManager {
     this.cameraPitchSlider.value = initialPitch;
     this.cameraPitchDisplay.textContent = `${initialPitch}°`;
 
-    // --- Smoothing Factor ---
-    this.updateSmoothingFactorDisplay(SettingsManager.get('smoothingFactor'));
-    SettingsManager.subscribe('smoothingFactor', (value) => this.updateSmoothingFactorDisplay(value));
+    // --- Smoothing Period ---
+    this.updateSmoothingPeriodDisplay(SettingsManager.get('smoothingPeriodSeconds'));
+    SettingsManager.subscribe('smoothingPeriodSeconds', (value) => this.updateSmoothingPeriodDisplay(value));
   }
 }
 
