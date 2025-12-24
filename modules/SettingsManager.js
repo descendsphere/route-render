@@ -20,7 +20,7 @@ class SettingsManager {
             type: 'string',
             defaultValue: 'overhead',
             url: true,
-            options: ['overhead', 'third-person'],
+            options: ['overhead', 'third-person', 'cinematic'],
         },
         cameraDistance: {
             type: 'number',
@@ -42,6 +42,49 @@ class SettingsManager {
             url: true,
             min: 1, // Minimum 1 second smoothing
             max: 60, // Maximum 60 seconds smoothing
+        },
+        // Cinematic Camera Settings
+        cameraPathDetail: {
+            type: 'number',
+            defaultValue: 20,
+            url: true,
+            min: 5,
+            max: 100,
+        },
+        cameraSplineTension: {
+            type: 'number',
+            defaultValue: 0.5,
+            url: true,
+            min: 0.0,
+            max: 1.0,
+        },
+        cameraLookAheadTime: {
+            type: 'number',
+            defaultValue: 900, // 15 minutes in seconds
+            url: true,
+            min: 60,   // 1 minute in seconds
+            max: 7200, // 120 minutes (2 hours) in seconds
+        },
+        cameraMaxAzimuth: {
+            type: 'number',
+            defaultValue: 45, // degrees
+            url: true,
+            min: 0,
+            max: 180,
+        },
+        cameraAzimuthFreq: {
+            type: 'number',
+            defaultValue: 0.1,
+            url: true,
+            min: 0.01,
+            max: 1.0,
+        },
+        cameraTransitionDur: {
+            type: 'number',
+            defaultValue: 3, // seconds
+            url: true,
+            min: 0,
+            max: 10,
         },
         tourSpeed: {
             type: 'number',

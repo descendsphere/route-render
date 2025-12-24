@@ -9,35 +9,17 @@ class TourController {
     this.tour = null;
     this.speedController = new SpeedController(this.viewer.clock); // New SpeedController instance
 
-    // For cameraStrategy, we need to know when it changes to apply the new one.
-    this.cameraStrategy = SettingsManager.get('cameraStrategy');
-    SettingsManager.subscribe('cameraStrategy', (newStrategy) => {
-      if (this.cameraStrategy !== newStrategy) {
-        this.cameraStrategy = newStrategy;
-        this._applyCameraStrategy(); // CORRECTED: Always apply the strategy when it changes
-      }
-    });
-
-    this.cameraListeners = {}; // To hold references to listeners
     this.uiTickListener = null; // To hold the UI tick listener
     this.onTick = () => {}; // Callback for UI updates
-
-    this.cameraStrategies = {
-      'third-person': this._activateTrackedCamera.bind(this),
-      'overhead': this._activateOverheadCamera.bind(this),
-    };
   }
 
   /**
    * Prepares the cinematic tour by setting up the clock and position properties.
    * @param {Array<object>} performanceData - An array of points with lon, lat, ele, and time properties.
    */
-  prepareTour(performanceData, routeCenter, maxRouteElevation) {
+  prepareTour(performanceData) {
     logger.info('prepareTour called');
-    this.stopTour(); // Stop any existing tour and clear camera settings
-
-    this.routeCenter = routeCenter;
-    this.maxRouteElevation = maxRouteElevation;
+    // CameraController will manage stopping existing tours and camera settings.
 
     const hasNativeTimestamps = performanceData.length > 0 && performanceData[0].time;
     let points = performanceData;
@@ -117,28 +99,6 @@ class TourController {
   }
 
   /**
-   * Sets up the camera and UI listeners for the tour.
-   * @private
-   */
-  _initializeListeners() {
-    this._applyCameraStrategy();
-
-    // Add a listener to update the UI on each tick
-    const onTickListener = () => {
-      if (!this.tour) return;
-      const totalDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
-      const elapsedTime = Cesium.JulianDate.secondsDifference(this.viewer.clock.currentTime, this.tour.startTime);
-      const percentage = Math.min(elapsedTime / totalDuration, 1.0);
-
-      const currentTime = this.viewer.clock.currentTime;
-
-      this.onTick({ percentage, currentTime });
-    };
-    this.viewer.clock.onTick.addEventListener(onTickListener);
-    this.cameraListeners['ui-tick'] = () => this.viewer.clock.onTick.removeEventListener(onTickListener);
-  }
-
-  /**
    * Updates the visual state of dynamic entities based on UI controls.
    */
   updateVisuals() {
@@ -153,116 +113,15 @@ class TourController {
     }
   }
 
-  /**
-   * Applies the currently selected camera strategy.
-   * @private
-   */
-  _applyCameraStrategy() {
-    // Clear previous camera settings
-    this._cleanupCamera();
 
-    if (this.cameraStrategies[this.cameraStrategy]) {
-      this.cameraStrategies[this.cameraStrategy]();
-    }
-  }
-
-  /**
-   * Cleans up all camera configurations (listeners, tracked entity).
-   * @private
-   */
-  _cleanupCamera() {
-    this.viewer.trackedEntity = undefined;
-    this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-    for (const listenerName in this.cameraListeners) {
-      if (this.cameraListeners.hasOwnProperty(listenerName)) {
-        this.cameraListeners[listenerName](); // This calls the removal function
-        delete this.cameraListeners[listenerName];
-      }
-    }
-  }
-
-  /**
-   * Activates the Tracked Entity (Third-Person) camera.
-   * @private
-   */
-  _activateTrackedCamera() {
-    this._cleanupCamera();
-    const listener = (clock) => {
-      if (!this.tour) return; // Do nothing if no tour is active
-      const currentPos = this.person.entity.position.getValue(clock.currentTime);
-      if (!Cesium.defined(currentPos)) return;
-
-      const pitch = Cesium.Math.toRadians(SettingsManager.get('cameraPitch'));
-      const heading = this.viewer.camera.heading; // Keep the current heading
-      const range = SettingsManager.get('cameraDistance');
-
-      this.viewer.camera.lookAt(
-        currentPos,
-        new Cesium.HeadingPitchRange(heading, pitch, range)
-      );
-    };
-
-    this.viewer.clock.onTick.addEventListener(listener);
-    this.cameraListeners['third-person'] = () => this.viewer.clock.onTick.removeEventListener(listener);
-  }
-
-
-
-  /**
-   * Activates the Overhead / Dynamic camera.
-   * @private
-   */
-  _activateOverheadCamera() {
-    this._cleanupCamera();
-    const listener = () => {
-      if (!this.tour) return; // Do nothing if no tour is active
-      const currentPos = this.person.entity.position.getValue(this.viewer.clock.currentTime);
-      if (!Cesium.defined(currentPos) || !this.tour) return;
-
-      // Calculate tour progress (0.0 to 1.0)
-      const tourDuration = Cesium.JulianDate.secondsDifference(this.tour.stopTime, this.tour.startTime);
-      const elapsedTime = Cesium.JulianDate.secondsDifference(this.viewer.clock.currentTime, this.tour.startTime);
-      const tourProgress = Math.min(elapsedTime / tourDuration, 1.0);
-
-      // Calculate heading to complete one 360-degree rotation over the tour duration
-      const heading = Cesium.Math.toRadians(tourProgress * 360);
-      const pitch = Cesium.Math.toRadians(SettingsManager.get('cameraPitch'));
-      const range = SettingsManager.get('cameraDistance'); // Use the new distance property
-
-      this.viewer.camera.lookAt(
-        currentPos,
-        new Cesium.HeadingPitchRange(heading, pitch, range)
-      );
-    };
-
-    this.viewer.scene.postUpdate.addEventListener(listener);
-    this.cameraListeners['overhead'] = () => this.viewer.scene.postUpdate.removeEventListener(listener);
-  }
 
   /**
    * Stops the cinematic tour and resets the camera to its default interactive state.
    */
   stopTour() {
-    logger.info('Stopping tour and resetting camera.');
-    // 1. Stop the clock
-    if (this.viewer.clock.shouldAnimate) {
-      this.viewer.clock.shouldAnimate = false;
-    }
-    // 2. Reset the time
-    if (this.tour) {
-      this.viewer.clock.currentTime = this.tour.startTime.clone();
-    }
-    // 3. Clean up all tour-related listeners
-    if (this.uiTickListener) {
-      this.uiTickListener();
-      this.uiTickListener = null;
-    }
-    this._cleanupCamera(); // This already removes camera listeners
-
-    // 4. Explicitly restore default camera control
-    this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-
-    // 5. Reset speed controller direction
+    logger.info('TourController: Stopping tour. Camera handled by CameraController.');
+    // CameraController will now manage stopping the clock, resetting time, and camera cleanup.
+    // This method only needs to reset the speed controller's direction.
     this.speedController.resetDirection();
   }
 
@@ -294,26 +153,13 @@ class TourController {
 
   regenerateTour() {
     if (this.tour) {
-      this.prepareTour(this.tour.points, this.routeCenter, this.maxRouteElevation);
+      this.prepareTour(this.tour.points);
     }
-  }
-
-  setCameraStrategy(strategy) {
-    SettingsManager.set('cameraStrategy', strategy);
-  }
-
-  setCameraDistance(distance) {
-    SettingsManager.set('cameraDistance', distance);
-  }
-
-  setCameraPitch(pitch) {
-    SettingsManager.set('cameraPitch', pitch);
   }
 
   // --- Custom Controls API ---
 
   startTour() {
-    this._initializeListeners();
     this.viewer.clock.shouldAnimate = true;
   }
 

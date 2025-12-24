@@ -12,6 +12,7 @@ import EnergyCalculator from './modules/EnergyCalculator.js';
 import PerformancePlanner from './modules/PerformancePlanner.js';
 import StatsOverlay from './modules/StatsOverlay.js'; // NEW
 import SettingsManager from './modules/SettingsManager.js';
+import CameraController from './modules/CameraController.js'; // NEW
 
 class App {
   constructor() {
@@ -19,6 +20,7 @@ class App {
     this.gpxFile = null;
     this.tourController = null;
     this.performanceTuner = null; // New PerformanceTuner instance
+    this.cameraController = null; // NEW: Manages all camera strategies and transitions
     this.currentPoints = [];
     this.routeEntity = null;
     this.person = null;
@@ -50,14 +52,12 @@ class App {
 
     // State Transition Logic
     if (newState === 'TOUR_PLAYING') {
-      this.performanceTuner.activate();
-      this.tourController.startTour();
-      this.ui.collapsePanel(); // Auto-collapse the panel
-      // Only change collapse state if starting a new tour
-      if (this.state === 'ROUTE_LOADED') {
-        this.statsOverlay.collapseRouteStats();
-        this.statsOverlay.showReplayStats();
-        this.statsOverlay.expandReplayStats();
+      if (this.state === 'TOUR_PAUSED') {
+        // Just resume the clock, don't re-trigger the full start sequence
+        this.tourController.startTour();
+      } else {
+        // This is a fresh start from ROUTE_LOADED
+        this._startTour();
       }
     } else if (newState === 'TOUR_PAUSED') {
       this.tourController.pauseTour();
@@ -66,43 +66,13 @@ class App {
       this.statsOverlay.expandRouteStats();
       this.ui.setRewindButtonIcon(true); // Always initialize to forward-facing icon
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
-        this.tourController.stopTour();
-        this.ui.updateScrubber(0);
-        this.ui.setPlayPauseButtonState(false);
-
-        // Manually update time displays to the start time
-        const startTime = this.viewer.clock.startTime;
-        const jsDate = Cesium.JulianDate.toDate(startTime);
-        const year = jsDate.getFullYear();
-        const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
-        const day = jsDate.getDate().toString().padStart(2, '0');
-        const hours = jsDate.getHours().toString().padStart(2, '0');
-        const minutes = jsDate.getMinutes().toString().padStart(2, '0');
-        const seconds = jsDate.getSeconds().toString().padStart(2, '0');
-        const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-
-        this.ui.updateTimeDisplay(timeString);
-        if (this.person.entity && this.person.entity.label) {
-          this.person.entity.label.text = timeString;
-        }
+        this._stopTour(); // Delegate to new stop tour method
       }
     }
 
     this.state = newState;
     this.ui.updateUIForState(this.state);
     this.performanceTuner.requestRender(); // Request render after any state change
-  }
-
-  /**
-   * Syncs the internal application state with the state of the Cesium clock.
-   * This is used to detect when the user interacts with the default Cesium widgets.
-   */
-  syncWithClock() {
-    if (this.state === 'TOUR_PLAYING' && !this.viewer.clock.shouldAnimate) {
-      this.setState('TOUR_PAUSED');
-    } else if (this.state === 'TOUR_PAUSED' && this.viewer.clock.shouldAnimate) {
-      this.setState('TOUR_PLAYING');
-    }
   }
 
   /**
@@ -117,7 +87,7 @@ class App {
     logger.info('Initializing application.');
     await this.initCesium();
     this.performanceTuner = new PerformanceTuner(this.viewer); // Instantiate PerformanceTuner
-
+    this.cameraController = new CameraController(this.viewer, SettingsManager); // NEW: Instantiate CameraController
 
     this.person = new Person(this.viewer);
     this.person.create();
@@ -153,6 +123,17 @@ class App {
 
     // Subscribe to tourSpeed changes
     SettingsManager.subscribe('tourSpeed', (speed) => this.tourController.setSpeed(speed));
+
+    // Subscribe to camera-related settings changes and notify CameraController
+    SettingsManager.subscribe('cameraStrategy', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraDistance', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraPitch', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraPathDetail', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraSplineTension', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraLookAheadTime', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraMaxAzimuth', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraAzimuthFreq', () => this.cameraController.onSettingsChange());
+    SettingsManager.subscribe('cameraTransitionDur', () => this.cameraController.onSettingsChange());
 
     // Subscribe to smoothing factor changes
     SettingsManager.subscribe('smoothingFactor', () => this.recalculateAnalytics());
@@ -245,133 +226,24 @@ class App {
       this.handleUrlLoad(urlToLoad);
     }
 
-    // Add a listener to sync our state with the Cesium clock
+    // Add a listener to update our CameraController and UI
     this.viewer.scene.postRender.addEventListener(() => {
-      if ((this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') && this.tourController.tour) {
-        this.syncWithClock();
+      if (!this.tourController.tour) return;
 
-        const currentTime = this.viewer.clock.currentTime;
-        const tourStartTime = this.tourController.tour.startTime;
-        let timeString;
-        let labelText;
+      this.cameraController.updateCamera(this.viewer.clock.currentTime, (state) => {
+        // Callback from CameraController with the current state of the tour
+        if (!state) return;
         
-        const elapsedTimeSeconds = Cesium.JulianDate.secondsDifference(currentTime, tourStartTime);
-        const elapsedHours = Math.floor(elapsedTimeSeconds / 3600).toString().padStart(2, '0');
-        const elapsedMinutes = Math.floor((elapsedTimeSeconds % 3600) / 60).toString().padStart(2, '0');
-        const elapsedSeconds = Math.floor(elapsedTimeSeconds % 60).toString().padStart(2, '0');
-        const elapsedTimeString = `${elapsedHours}:${elapsedMinutes}:${elapsedSeconds}`;
-
-        if (this.hasNativeTimestamps) {
-            // --- ACTUAL PERFORMANCE MODE ---
-            const jsDate = Cesium.JulianDate.toDate(currentTime);
-            const dateString = `${jsDate.getFullYear()}-${(jsDate.getMonth() + 1).toString().padStart(2, '0')}-${jsDate.getDate().toString().padStart(2, '0')}`;
-            const timeOnlyString = `${jsDate.getHours().toString().padStart(2, '0')}:${jsDate.getMinutes().toString().padStart(2, '0')}:${jsDate.getSeconds().toString().padStart(2, '0')}`;
-            timeString = `${dateString} ${timeOnlyString}`;
-
-            if (this.tourData && this.tourData.length > 0) {
-                const currentIndex = this.tourData.findIndex(p => p.time && (Cesium.JulianDate.fromDate(p.time) > currentTime));
-                const currentPoint = this.tourData[Math.max(0, currentIndex - 1)];
-
-                if(currentPoint) {
-                    const speedLabel = `Speed (Act/Plan): ${currentPoint.actualSmoothedSpeedKmh.toFixed(1)} / ${currentPoint.plannedSmoothedSpeed.toFixed(1)} km/h`;
-                    const ascentLabel = `V.Speed (Act/Plan): ${Math.round(currentPoint.actualSmoothedElevationRate / 10) * 10} / ${Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10} m/h`;
-                    const kmEffortLabel = `Km-e Rate (Act/Plan): ${currentPoint.actualSmoothedKmEffortRate.toFixed(1)} / ${currentPoint.plannedSmoothedKmEffortRate.toFixed(1)} /h`;
-
-                    labelText = `Elapsed: ${elapsedTimeString}\n` + 
-                                `Dist: ${(currentPoint.cumulativeDistance / 1000).toFixed(3)}km\n` + 
-                                `Ascent: ${(currentPoint.cumulativeElevationGain).toFixed(0)}m\n` + 
-                                `Kcal: ${currentPoint.cumulativeKcal.toFixed(0)}\n` + 
-                                `--------------\n` + 
-                                `${speedLabel}\n${ascentLabel}\n${kmEffortLabel}`;
-                } else {
-                    labelText = timeString;
-                }
-            } else {
-                labelText = timeString;
-            }
-
-        } else if (this.tourData && this.tourData.length > 0) {
-            // --- SIMULATED PERFORMANCE MODE ---
-            timeString = elapsedTimeString;
-            
-            const currentPoint = this.tourData.find(p => p.projectedTime >= elapsedTimeSeconds);
-            
-            if (currentPoint) {
-                labelText = `Elapsed: ${timeString}\n` + 
-                            `Dist: ${(currentPoint.cumulativeDistance / 1000).toFixed(3)}km\n` + 
-                            `Ascent: ${(currentPoint.cumulativeElevationGain).toFixed(0)}m\n` + 
-                            `Kcal: ${currentPoint.cumulativeKcal.toFixed(0)}\n` + 
-                            `--------------\n` + 
-                            `Speed: ${currentPoint.plannedSmoothedSpeed.toFixed(1)} km/h\n` + 
-                            `V.Speed: ${Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10} m/h\n` + 
-                            `Km-e Rate: ${currentPoint.plannedSmoothedKmEffortRate.toFixed(1)}/h`;
-            } else {
-                labelText = timeString;
-            }
-        } else {
-            // Fallback for initialization race conditions
-            const jsDate = Cesium.JulianDate.toDate(currentTime);
-            const dateString = `${jsDate.getFullYear()}-${(jsDate.getMonth() + 1).toString().padStart(2, '0')}-${jsDate.getDate().toString().padStart(2, '0')}`;
-            const timeOnlyString = `${jsDate.getHours().toString().padStart(2, '0')}:${jsDate.getMinutes().toString().padStart(2, '0')}:${jsDate.getSeconds().toString().padStart(2, '0')}`;
-            timeString = `${dateString} ${timeOnlyString}`;
-            labelText = timeString;
-        }
-
-        // Update person label
+        this.tourPercentage = state.percentage;
+        this.ui.updateScrubber(state.percentage);
+        this.ui.updateTimeDisplay(state.timeString);
+        
         if (this.person.entity && this.person.entity.label) {
-            this.person.entity.label.text = timeString; // Simplified to just time
+            this.person.entity.label.text = state.timeString;
         }
-
-        // Update custom UI display
-        this.ui.updateTimeDisplay(timeString);
-
-        // NEW: Update StatsOverlay with live metrics
-        if (this.tourData && this.tourData.length > 0) {
-            const liveStats = {};
-            
-            let currentPoint;
-            // Check if tour is at the end
-            if (this.tourPercentage >= 1) {
-                currentPoint = this.tourData[this.tourData.length - 1];
-            } else {
-                // Find current point based on time
-                if (this.hasNativeTimestamps) {
-                    const currentIndex = this.tourData.findIndex(p => p.time && (Cesium.JulianDate.fromDate(p.time) > currentTime));
-                    currentPoint = this.tourData[Math.max(0, currentIndex - 1)];
-                } else {
-                    currentPoint = this.tourData.find(p => p.projectedTime >= elapsedTimeSeconds);
-                }
-            }
-
-            // Populate liveStats from the determined currentPoint
-            if (currentPoint) {
-                const totalTime = this.hasNativeTimestamps ? 
-                    (this.tourData[this.tourData.length - 1].time.getTime() - this.tourData[0].time.getTime()) / 1000
-                    : this.tourData[this.tourData.length - 1].projectedTime;
-                
-                liveStats.elapsedTime = this.tourPercentage >= 1 ? StatisticsCalculator.getDurationString(totalTime) : elapsedTimeString;
-                liveStats.distance = (currentPoint.cumulativeDistance / 1000).toFixed(2);
-                liveStats.ascent = (currentPoint.cumulativeElevationGain).toFixed(0);
-                liveStats.kcal = currentPoint.cumulativeKcal.toFixed(0);
-
-                if (this.hasNativeTimestamps) {
-                    liveStats.actualSpeed = currentPoint.actualSmoothedSpeedKmh.toFixed(1);
-                    liveStats.plannedSpeed = currentPoint.plannedSmoothedSpeed.toFixed(1);
-                    liveStats.actualVSpeed = (Math.round(currentPoint.actualSmoothedElevationRate / 10) * 10);
-                    liveStats.plannedVSpeed = (Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10);
-                    liveStats.actualKmEffortRate = currentPoint.actualSmoothedKmEffortRate.toFixed(1);
-                    liveStats.plannedKmEffortRate = currentPoint.plannedSmoothedKmEffortRate.toFixed(1);
-                } else {
-                    liveStats.plannedSpeed = currentPoint.plannedSmoothedSpeed.toFixed(1);
-                    liveStats.plannedVSpeed = (Math.round(currentPoint.plannedSmoothedElevationRate / 10) * 10);
-                    liveStats.plannedKmEffortRate = currentPoint.plannedSmoothedKmEffortRate.toFixed(1);
-                }
-            }
-            this.statsOverlay.updateReplayStats(liveStats, this.hasNativeTimestamps);
-        } else {
-            this.statsOverlay.updateReplayStats(null, this.hasNativeTimestamps); // Clear live stats if no tour data
-        }
-      }
+        
+        this.statsOverlay.updateReplayStats(state.liveStats, this.hasNativeTimestamps);
+      });
     });
   }
 
@@ -704,20 +576,10 @@ class App {
     this.renderRefuelMarkers(refuelPoints);
 
     // --- 6. Prepare Tour ---
-    this.tourController.prepareTour(this.tourData, this.routeCenter, this.maxRouteElevation);
-
-    // Force a scene update by slightly "jiggling" the camera.
-    // This is more robust than just requesting renders, as it forces the engine
-    // to re-evaluate transforms and label positions.
-//    const currentHeading = this.viewer.camera.heading;
-//    this.viewer.camera.setView({
-//        orientation: {
-//            heading: currentHeading + 0.000001, // A tiny, imperceptible change
-//            pitch: this.viewer.camera.pitch,
-//            roll: this.viewer.camera.roll
-//        }
-//    });
-    this.performanceTuner.requestRender();
+    this.tourController.prepareTour(this.tourData);
+    // NEW: Set the initial strategy on the camera controller so it's ready for playback
+    this.cameraController.setStrategy(SettingsManager.get('cameraStrategy'), this.tourData);
+    this.cameraController.onSettingsChange();
   }
 
   /**
@@ -1143,6 +1005,70 @@ class App {
     this.ui.cameraDistanceSlider.dispatchEvent(new Event('input'));
 
     this.performanceTuner.requestRender();
+  }
+
+  /**
+   * Initiates the tour sequence, including fade-in animation via CameraController.
+   * @private
+   */
+  _startTour() {
+    this.performanceTuner.activate();
+    this.ui.collapsePanel(); // Auto-collapse the panel
+    // Ensure the tourController is prepared for playback
+    this.tourController.startTour(); // This will eventually be called by CameraController upon fade-in complete
+    
+    // Pass current camera state for fade-in transition
+    const overviewCameraState = {
+      position: this.viewer.camera.position.clone(),
+      heading: this.viewer.camera.heading,
+      pitch: this.viewer.camera.pitch,
+      roll: this.viewer.camera.roll
+    };
+    
+    // CameraController will manage the actual camera movement and the clock start
+    this.cameraController.startTour(this.tourData, overviewCameraState, () => {
+      // Callback from CameraController when fade-in is complete and tour should truly start
+      this.viewer.clock.shouldAnimate = true;
+    }, () => {
+      // Callback from CameraController when tour playback reaches end (fade-out complete)
+      this.setState('ROUTE_LOADED'); // Go back to loaded state
+    });
+
+    if (this.state === 'ROUTE_LOADED') { // Only change stats overlay if starting a new tour
+      this.statsOverlay.collapseRouteStats();
+      this.statsOverlay.showReplayStats();
+      this.statsOverlay.expandReplayStats();
+    }
+  }
+
+  /**
+   * Stops the tour sequence, including fade-out animation via CameraController.
+   * @private
+   */
+  _stopTour() {
+    this.performanceTuner.deactivate();
+    this.tourController.stopTour();
+    this.ui.updateScrubber(0);
+    this.ui.setPlayPauseButtonState(false);
+
+    // Manually update time displays to the start time
+    const startTime = this.viewer.clock.startTime;
+    const jsDate = Cesium.JulianDate.toDate(startTime);
+    const year = jsDate.getFullYear();
+    const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+    const day = jsDate.getDate().toString().padStart(2, '0');
+    const hours = jsDate.getHours().toString().padStart(2, '0');
+    const minutes = jsDate.getMinutes().toString().padStart(2, '0');
+    const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+    const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+    this.ui.updateTimeDisplay(timeString);
+    if (this.person.entity && this.person.entity.label) {
+      this.person.entity.label.text = timeString;
+    }
+
+    // CameraController will handle the fade-out
+    this.cameraController.stopTour();
   }
 }
 

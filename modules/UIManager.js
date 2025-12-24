@@ -112,6 +112,27 @@ class UIManager {
     this.restTimeDecrement = document.getElementById('rest-time-decrement');
     this.restTimeDisplay = document.getElementById('rest-time-display');
     this.restTimeIncrement = document.getElementById('rest-time-increment');
+
+    // Cinematic Camera Controls
+    this.cinematicCameraControls = document.getElementById('cinematic-camera-controls');
+    this.cameraPathDetailDecrement = document.getElementById('camera-path-detail-decrement');
+    this.cameraPathDetailDisplay = document.getElementById('camera-path-detail-display');
+    this.cameraPathDetailIncrement = document.getElementById('camera-path-detail-increment');
+    this.cameraSplineTensionDecrement = document.getElementById('camera-spline-tension-decrement');
+    this.cameraSplineTensionDisplay = document.getElementById('camera-spline-tension-display');
+    this.cameraSplineTensionIncrement = document.getElementById('camera-spline-tension-increment');
+    this.cameraLookAheadDecrement = document.getElementById('camera-look-ahead-decrement');
+    this.cameraLookAheadDisplay = document.getElementById('camera-look-ahead-display');
+    this.cameraLookAheadIncrement = document.getElementById('camera-look-ahead-increment');
+    this.cameraMaxAzimuthDecrement = document.getElementById('camera-max-azimuth-decrement');
+    this.cameraMaxAzimuthDisplay = document.getElementById('camera-max-azimuth-display');
+    this.cameraMaxAzimuthIncrement = document.getElementById('camera-max-azimuth-increment');
+    this.cameraAzimuthFreqDecrement = document.getElementById('camera-azimuth-freq-decrement');
+    this.cameraAzimuthFreqDisplay = document.getElementById('camera-azimuth-freq-display');
+    this.cameraAzimuthFreqIncrement = document.getElementById('camera-azimuth-freq-increment');
+    this.cameraTransitionDurDecrement = document.getElementById('camera-transition-dur-decrement');
+    this.cameraTransitionDurDisplay = document.getElementById('camera-transition-dur-display');
+    this.cameraTransitionDurIncrement = document.getElementById('camera-transition-dur-increment');
   }
 
   init() {
@@ -168,7 +189,10 @@ class UIManager {
       }
     });
 
-    this.cameraStrategyInput.addEventListener('change', (event) => SettingsManager.set('cameraStrategy', event.target.value));
+    this.cameraStrategyInput.addEventListener('change', (event) => {
+        SettingsManager.set('cameraStrategy', event.target.value);
+        this._updateCinematicControlsVisibility();
+    });
     this.personColorInput.addEventListener('input', (event) => this.onUpdatePersonStyle({ color: event.target.value }));
     this.personSizeDecrement.addEventListener('click', () => {
       let size = parseFloat(this.personSizeDisplay.textContent);
@@ -303,13 +327,28 @@ class UIManager {
         }
     });
 
-    // NEW: Smoothing Period Listeners
+    // Smoothing Period Listeners
     this.smoothingPeriodDecrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(-10));
     this.smoothingPeriodDecrement.addEventListener('click', () => this._adjustSmoothingPeriod(-1));
     this.smoothingPeriodIncrement.addEventListener('click', () => this._adjustSmoothingPeriod(1));
     this.smoothingPeriodIncrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(10));
 
+    // Cinematic Camera Controls Listeners
+    this.cameraPathDetailDecrement.addEventListener('click', () => this._adjustCameraPathDetail(-5));
+    this.cameraPathDetailIncrement.addEventListener('click', () => this._adjustCameraPathDetail(5));
+    this.cameraSplineTensionDecrement.addEventListener('click', () => this._adjustCameraSplineTension(-0.1));
+    this.cameraSplineTensionIncrement.addEventListener('click', () => this._adjustCameraSplineTension(0.1));
+    this.cameraLookAheadDecrement.addEventListener('click', () => this._adjustCameraLookAheadTime(-5)); // Adjust in minutes
+    this.cameraLookAheadIncrement.addEventListener('click', () => this._adjustCameraLookAheadTime(5)); // Adjust in minutes
+    this.cameraMaxAzimuthDecrement.addEventListener('click', () => this._adjustCameraMaxAzimuth(-5));
+    this.cameraMaxAzimuthIncrement.addEventListener('click', () => this._adjustCameraMaxAzimuth(5));
+    this.cameraAzimuthFreqDecrement.addEventListener('click', () => this._adjustCameraAzimuthFreq(-0.01));
+    this.cameraAzimuthFreqIncrement.addEventListener('click', () => this._adjustCameraAzimuthFreq(0.01));
+    this.cameraTransitionDurDecrement.addEventListener('click', () => this._adjustCameraTransitionDur(-1));
+    this.cameraTransitionDurIncrement.addEventListener('click', () => this._adjustCameraTransitionDur(1));
+
     this._initializeSettingsBasedUI();
+    this._updateCinematicControlsVisibility(); // Set initial visibility
   }
 
   _logValue(position, min, max) {
@@ -338,6 +377,7 @@ class UIManager {
     this.styleControls.style.display = 'none';
     this.cameraStrategyControls.style.display = 'none';
     this.performanceControls.style.display = 'none';
+    this.cinematicCameraControls.style.display = 'none'; // Ensure hidden by default
     this.filenameSuggestion.style.display = 'none';
     this.athleteProfileControls.style.display = 'none';
     this.quickControlsContainer.classList.remove('active');
@@ -357,6 +397,7 @@ class UIManager {
       this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(false);
       this.tourControls.style.display = 'none';
+      this._updateCinematicControlsVisibility(); // Update visibility based on current strategy
     } else if (state === 'TOUR_PLAYING') {
       this.styleControls.style.display = 'block';
       this.cameraStrategyControls.style.display = 'block';
@@ -368,6 +409,7 @@ class UIManager {
       this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(true);
       this.tourControls.style.display = 'none';
+      this._updateCinematicControlsVisibility(); // Update visibility based on current strategy
     }
   }
 
@@ -534,6 +576,134 @@ class UIManager {
   }
 
   /**
+   * Adjusts camera path detail by a given step and updates the SettingsManager.
+   * @param {number} step - The amount in meters to adjust the path detail by.
+   * @private
+   */
+  _adjustCameraPathDetail(step) {
+    const currentValue = SettingsManager.get('cameraPathDetail');
+    const newValue = currentValue + step;
+    SettingsManager.set('cameraPathDetail', newValue);
+  }
+
+  /**
+   * Updates the display of the camera path detail.
+   * @param {number} value - The new camera path detail value in meters.
+   */
+  updateCameraPathDetailDisplay(value) {
+    this.cameraPathDetailDisplay.textContent = `${value}m`;
+  }
+
+  /**
+   * Adjusts camera spline tension by a given step and updates the SettingsManager.
+   * @param {number} step - The amount to adjust the spline tension by.
+   * @private
+   */
+  _adjustCameraSplineTension(step) {
+    const currentValue = SettingsManager.get('cameraSplineTension');
+    const newValue = parseFloat((currentValue + step).toFixed(1)); // ToFixed to prevent float issues
+    SettingsManager.set('cameraSplineTension', newValue);
+  }
+
+  /**
+   * Updates the display of the camera spline tension.
+   * @param {number} value - The new camera spline tension value.
+   */
+  updateCameraSplineTensionDisplay(value) {
+    this.cameraSplineTensionDisplay.textContent = value.toFixed(1);
+  }
+
+  /**
+   * Adjusts camera look-ahead time by a given step (in minutes) and updates the SettingsManager (in seconds).
+   * @param {number} stepMinutes - The amount in minutes to adjust the look-ahead time by.
+   * @private
+   */
+  _adjustCameraLookAheadTime(stepMinutes) {
+    const currentValueSeconds = SettingsManager.get('cameraLookAheadTime');
+    const currentValueMinutes = currentValueSeconds / 60;
+    const newValueMinutes = currentValueMinutes + stepMinutes;
+    SettingsManager.set('cameraLookAheadTime', newValueMinutes * 60); // Store in seconds
+  }
+
+  /**
+   * Updates the display of the camera look-ahead time (converts seconds to minutes for display).
+   * @param {number} valueSeconds - The new camera look-ahead time value in seconds.
+   */
+  updateCameraLookAheadTimeDisplay(valueSeconds) {
+    this.cameraLookAheadDisplay.textContent = `${valueSeconds / 60}min`;
+  }
+
+  /**
+   * Adjusts camera max azimuth by a given step and updates the SettingsManager.
+   * @param {number} step - The amount in degrees to adjust the max azimuth by.
+   * @private
+   */
+  _adjustCameraMaxAzimuth(step) {
+    const currentValue = SettingsManager.get('cameraMaxAzimuth');
+    const newValue = currentValue + step;
+    SettingsManager.set('cameraMaxAzimuth', newValue);
+  }
+
+  /**
+   * Updates the display of the camera max azimuth.
+   * @param {number} value - The new camera max azimuth value in degrees.
+   */
+  updateCameraMaxAzimuthDisplay(value) {
+    this.cameraMaxAzimuthDisplay.textContent = `${value}°`;
+  }
+
+  /**
+   * Adjusts camera azimuth frequency by a given step and updates the SettingsManager.
+   * @param {number} step - The amount to adjust the azimuth frequency by.
+   * @private
+   */
+  _adjustCameraAzimuthFreq(step) {
+    const currentValue = SettingsManager.get('cameraAzimuthFreq');
+    const newValue = parseFloat((currentValue + step).toFixed(2)); // ToFixed to prevent float issues
+    SettingsManager.set('cameraAzimuthFreq', newValue);
+  }
+
+  /**
+   * Updates the display of the camera azimuth frequency.
+   * @param {number} value - The new camera azimuth frequency value.
+   */
+  updateCameraAzimuthFreqDisplay(value) {
+    this.cameraAzimuthFreqDisplay.textContent = value.toFixed(2);
+  }
+
+  /**
+   * Adjusts camera transition duration by a given step and updates the SettingsManager.
+   * @param {number} step - The amount in seconds to adjust the transition duration by.
+   * @private
+   */
+  _adjustCameraTransitionDur(step) {
+    const currentValue = SettingsManager.get('cameraTransitionDur');
+    const newValue = currentValue + step;
+    SettingsManager.set('cameraTransitionDur', newValue);
+  }
+
+  /**
+   * Updates the display of the camera transition duration.
+   * @param {number} value - The new camera transition duration value in seconds.
+   */
+  updateCameraTransitionDurDisplay(value) {
+    this.cameraTransitionDurDisplay.textContent = `${value}s`;
+  }
+
+  /**
+   * Toggles the visibility of cinematic camera controls based on the active camera strategy.
+   * @private
+   */
+  _updateCinematicControlsVisibility() {
+    const currentStrategy = SettingsManager.get('cameraStrategy');
+    if (currentStrategy === 'cinematic') {
+      this.cinematicCameraControls.style.display = 'block';
+    } else {
+      this.cinematicCameraControls.style.display = 'none';
+    }
+  }
+
+  /**
    * Initializes all UI elements tied to SettingsManager and subscribes them to future changes.
    * This centralizes the "hydration" of the UI from the state.
    * @private
@@ -552,6 +722,7 @@ class UIManager {
     this.cameraStrategyInput.value = SettingsManager.get('cameraStrategy');
     SettingsManager.subscribe('cameraStrategy', (strategy) => {
         this.cameraStrategyInput.value = strategy;
+        this._updateCinematicControlsVisibility(); // Update visibility when strategy changes
     });
 
     // --- Camera Distance Slider ---
@@ -575,6 +746,25 @@ class UIManager {
     // --- Smoothing Period ---
     this.updateSmoothingPeriodDisplay(SettingsManager.get('smoothingPeriodSeconds'));
     SettingsManager.subscribe('smoothingPeriodSeconds', (value) => this.updateSmoothingPeriodDisplay(value));
+
+    // --- Cinematic Camera Settings ---
+    this.updateCameraPathDetailDisplay(SettingsManager.get('cameraPathDetail'));
+    SettingsManager.subscribe('cameraPathDetail', (value) => this.updateCameraPathDetailDisplay(value));
+
+    this.updateCameraSplineTensionDisplay(SettingsManager.get('cameraSplineTension'));
+    SettingsManager.subscribe('cameraSplineTension', (value) => this.updateCameraSplineTensionDisplay(value));
+
+    this.updateCameraLookAheadTimeDisplay(SettingsManager.get('cameraLookAheadTime'));
+    SettingsManager.subscribe('cameraLookAheadTime', (value) => this.updateCameraLookAheadTimeDisplay(value));
+
+    this.updateCameraMaxAzimuthDisplay(SettingsManager.get('cameraMaxAzimuth'));
+    SettingsManager.subscribe('cameraMaxAzimuth', (value) => this.updateCameraMaxAzimuthDisplay(value));
+
+    this.updateCameraAzimuthFreqDisplay(SettingsManager.get('cameraAzimuthFreq'));
+    SettingsManager.subscribe('cameraAzimuthFreq', (value) => this.updateCameraAzimuthFreqDisplay(value));
+
+    this.updateCameraTransitionDurDisplay(SettingsManager.get('cameraTransitionDur'));
+    SettingsManager.subscribe('cameraTransitionDur', (value) => this.updateCameraTransitionDurDisplay(value));
   }
 }
 

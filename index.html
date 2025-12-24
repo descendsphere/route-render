@@ -58,6 +58,7 @@
         <select id="camera-strategy">
           <option value="third-person">Third-Person</option>
           <option value="overhead" selected>Overhead</option>
+          <option value="cinematic">Cinematic</option>
         </select>
         <div class="slider-group">
           <label for="camera-distance">
@@ -74,6 +75,60 @@
           </label>
           <input type="range" id="camera-pitch" min="-90" max="0" step="1" value="-45">
           <span id="camera-pitch-display">-45°</span>
+        </div>
+      </div>
+
+      <div id="cinematic-camera-controls" class="control-group" style="display: none;">
+        <h4 class="collapsible-header">Cinematic Camera</h4>
+        <div class="collapsible-content">
+          <div class="number-input-group">
+            <label>Path Detail (m):</label>
+            <div class="number-input-widget">
+              <button id="camera-path-detail-decrement" class="adjust-button">-</button>
+              <span id="camera-path-detail-display">20</span>
+              <button id="camera-path-detail-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Path Tension (0-1):</label>
+            <div class="number-input-widget">
+              <button id="camera-spline-tension-decrement" class="adjust-button">-</button>
+              <span id="camera-spline-tension-display">0.5</span>
+              <button id="camera-spline-tension-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Look-Ahead (min):</label>
+            <div class="number-input-widget">
+              <button id="camera-look-ahead-decrement" class="adjust-button">-</button>
+              <span id="camera-look-ahead-display">15</span>
+              <button id="camera-look-ahead-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Orbit Angle (°):</label>
+            <div class="number-input-widget">
+              <button id="camera-max-azimuth-decrement" class="adjust-button">-</button>
+              <span id="camera-max-azimuth-display">45</span>
+              <button id="camera-max-azimuth-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Orbit Speed:</label>
+            <div class="number-input-widget">
+              <button id="camera-azimuth-freq-decrement" class="adjust-button">-</button>
+              <span id="camera-azimuth-freq-display">0.1</span>
+              <button id="camera-azimuth-freq-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Transition Time (s):</label>
+            <div class="number-input-widget">
+              <button id="camera-transition-dur-decrement" class="adjust-button">-</button>
+              <span id="camera-transition-dur-display">3</span>
+              <button id="camera-transition-dur-increment" class="adjust-button">+</button>
+            </div>
+          </div>
         </div>
       </div>
 

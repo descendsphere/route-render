@@ -4,6 +4,15 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ## Planned
 
+### Epic: Camera Strategy Framework and Cinematic Camera
+
+-   **Description:** Implement a modular, pluggable framework for camera strategies, allowing for easy expansion and sophisticated camera behaviors. Develop a new "Cinematic Camera" strategy with smooth, spline-based paths, anticipatory gaze, dynamic orbiting, and configurable fade-in/fade-out transitions.
+-   **Design Document:** [design.camera-framework.20251222.2102.md](design.camera-framework.20251222.2102.md)
+-   **Items covered by this Epic:**
+    -   **[FEATURE] Cinematic Camera Strategy:** Create a new camera strategy that provides a highly configurable cinematic experience.
+    -   **[REFACTOR] Camera Strategy Framework:** Refactor existing camera logic into a modular framework with `CameraController` and `CameraStrategy` base class.
+    -   **[REFACTOR] Overhead & Third-Person Camera Strategies:** Adapt existing camera logic to the new framework.
+
 ### Epic: Multi-Route Management & Shareability
 
 - **[FEATURE] Manage Routes:** Add UI to allow renaming and deleting routes from the library.
@@ -73,7 +82,7 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 ### Code Architecture
 
 - **[REFACTOR] Filename Generator Module:** Create a dedicated `FilenameGenerator.js` module to encapsulate the logic for constructing the suggested filename. This will make the logic more maintainable and easier to extend in the future.
-- **[REFACTOR] Smoothed Camera Velocity:** Implement a moving average on the position data to calculate a smoother velocity vector for the camera to follow.
+- **[Superseded][REFACTOR] Smoothed Camera Velocity:** Implement a moving average on the position data to calculate a smoother velocity vector for the camera to follow. **This item is now part of the "Camera Strategy Framework and Cinematic Camera" Epic.**
 
 ---
 
