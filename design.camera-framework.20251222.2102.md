@@ -110,6 +110,7 @@ The `CameraController` will manage its own internal state machine to handle the 
 
 #### 4.1.5. `CinematicCameraStrategy.js` (Extends `CameraStrategy`)
 *   **Purpose:** Implements the cinematic camera logic using the new framework.
+*   **Note:** The final implementation follows the more detailed, `lookAt`-based design outlined in [perplexity.20260101.2020.cesium_cinematic_route_playback_complete_guide.md](./perplexity.20260101.2020.cesium_cinematic_route_playback_complete_guide.md).
 *   **Key Methods:**
     *   `generateCameraPath(tourData, settings)`: This method will implement the full, multi-stage pipeline:
         1.  **Path Simplification:** `simplifiedPoints = PathSimplifier.simplify(tourData.perPointData, settings.cameraPathDetail)`.

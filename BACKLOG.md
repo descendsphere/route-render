@@ -4,15 +4,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ## Planned
 
-### Epic: Camera Strategy Framework and Cinematic Camera
-
--   **Description:** Implement a modular, pluggable framework for camera strategies, allowing for easy expansion and sophisticated camera behaviors. Develop a new "Cinematic Camera" strategy with smooth, spline-based paths, anticipatory gaze, dynamic orbiting, and configurable fade-in/fade-out transitions.
--   **Design Document:** [design.camera-framework.20251222.2102.md](design.camera-framework.20251222.2102.md)
--   **Items covered by this Epic:**
-    -   **[FEATURE] Cinematic Camera Strategy:** Create a new camera strategy that provides a highly configurable cinematic experience.
-    -   **[REFACTOR] Camera Strategy Framework:** Refactor existing camera logic into a modular framework with `CameraController` and `CameraStrategy` base class.
-    -   **[REFACTOR] Overhead & Third-Person Camera Strategies:** Adapt existing camera logic to the new framework.
-
 ### Epic: Multi-Route Management & Shareability
 
 - **[FEATURE] Manage Routes:** Add UI to allow renaming and deleting routes from the library.
@@ -88,9 +79,15 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[EPIC] Camera Strategy Framework and Cinematic Camera:**
+  - **[REFACTOR] Camera Strategy Framework:** Refactored all camera logic into a modular framework with a central `CameraController` and strategy-specific classes. This resolved numerous state management and camera control bugs.
+  - **[REFACTOR] Overhead & Third-Person Camera Strategies:** Migrated the existing interactive cameras into the new framework, stabilizing their behavior by using a consistent `onTick` update loop.
+  - **[FEATURE] Cinematic Camera Strategy:** Implemented a new, sophisticated cinematic camera based on a `lookAt` design. It uses a multi-phase pre-calculation pipeline to generate a smooth, anticipatory camera path with an EMA-weighted look-ahead target.
+  - **[FEATURE] Cinematic Camera Tuning:** Exposed new parameters (`Gaze Smoothing`, `Path Density`) to the UI to allow for fine-tuning of the cinematic camera's behavior.
+  - **[FIX] Time Scrubber Reset:** Fixed a bug where the time scrubber UI would not reset to zero when a tour was stopped or reset.
+
 - **[EPIC] Performance Tuning & Debugging:**
   - **[FEATURE] Intelligent Performance Tuning:** Rearchitected the `PerformanceTuner` to be configuration-driven. The new system uses a target FPS to throttle the engine and a dynamic quality ceiling for each profile ('Performance', 'Balanced', 'Power Saver') to intelligently balance frame rate and power consumption, preventing resource over-utilization on high-end hardware.
-
 - **[UI/UX] Remove "Top-Down" Camera Strategy:**
   - **Reason:** The "Top-Down" camera strategy provides a view that can be replicated by setting the manual pitch control to -90° in other camera modes (like "Overhead"). Removing this redundant strategy simplifies the camera selection UI.
   - **Scope:**

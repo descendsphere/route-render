@@ -2,7 +2,10 @@ import CameraStrategy from './CameraStrategy.js';
 import logger from './Logger.js';
 
 /**
- * Implements the overhead camera strategy.
+ * Implements the interactive overhead camera strategy.
+ * This strategy does not pre-calculate a path. Instead, it computes the camera's
+ * position and orientation on-demand, based on the person's current position
+ * and the user's interactive camera settings (pitch, zoom).
  */
 class OverheadCameraStrategy extends CameraStrategy {
   /**
@@ -11,77 +14,115 @@ class OverheadCameraStrategy extends CameraStrategy {
    */
   constructor(viewer, settingsManager) {
     super(viewer, settingsManager);
-    logger.info('OverheadCameraStrategy initialized.');
+    logger.info('OverheadCameraStrategy initialized for on-demand calculation.');
   }
 
   /**
-   * Generates the pre-calculated camera path for the overhead strategy.
-   * @param {object} tourData - The full tour data object.
-   * @returns {Array<object>} The generated camera path.
+   * For this interactive strategy, this method is a fast, no-op setup step.
+   * It stores the tour data for use in on-demand calculations.
+   * @param {object} tourData - The tour data object.
    */
   generateCameraPath(tourData) {
-    logger.info('Generating overhead camera path...');
-    this._cameraPath = [];
-
-    if (!tourData || tourData.perPointData.length < 2) {
-      return this._cameraPath;
-    }
-
-    const cameraPitch = Cesium.Math.toRadians(this._settingsManager.get('cameraPitch'));
-    const cameraDistance = this._settingsManager.get('cameraDistance');
-
-    const hasNativeTimestamps = tourData.perPointData[0].time !== null;
-
-    let tourDuration;
-    if (hasNativeTimestamps) {
-        const firstPointTime = tourData.perPointData[0].time;
-        const lastPointTime = tourData.perPointData[tourData.perPointData.length - 1].time;
-        tourDuration = Cesium.JulianDate.secondsDifference(lastPointTime, firstPointTime);
-    } else {
-        tourDuration = tourData.perPointData[tourData.perPointData.length - 1].projectedTime;
-    }
-
-
-    tourData.perPointData.forEach(p => {
-      const personPosition = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
-      
-      let elapsedTime;
-      if (hasNativeTimestamps) {
-        elapsedTime = Cesium.JulianDate.secondsDifference(p.time, tourData.perPointData[0].time);
-      } else {
-        elapsedTime = p.projectedTime;
-      }
-      
-      const tourProgress = tourDuration > 0 ? (elapsedTime / tourDuration) : 0;
-
-      // Calculate heading to complete one 360-degree rotation over the tour duration
-      const heading = Cesium.Math.toRadians(tourProgress * 360);
-      
-      // Use a temporary camera to get the view from lookAt, then extract position/orientation
-      const tempCamera = new Cesium.Camera(this._viewer.scene);
-      tempCamera.setView({
-        destination: personPosition,
-        orientation: {
-          heading: heading,
-          pitch: cameraPitch,
-          range: cameraDistance
-        }
-      });
-
-      this._cameraPath.push({
-        time: hasNativeTimestamps ? p.time : Cesium.JulianDate.addSeconds(tourData.startTime, p.projectedTime, new Cesium.JulianDate()),
-        position: tempCamera.position.clone(),
-        orientation: {
-          heading: tempCamera.heading,
-          pitch: tempCamera.pitch,
-          roll: tempCamera.roll
-        }
-      });
-    });
-
-    logger.info(`Overhead camera path generated with ${this._cameraPath.length} points.`);
-    return this._cameraPath;
+    logger.info('Overhead strategy is interactive; path generation is a no-op.');
+    this._cameraPath = []; // This strategy does not use a pre-calculated path.
+    this._currentTourData = tourData; // Store tour data for on-demand use.
   }
-}
 
-export default OverheadCameraStrategy;
+  /**
+   * Calculates the camera's state (position and orientation) for a given time.
+   * This is calculated on-demand to provide an interactive experience.
+   * @param {Cesium.JulianDate} currentTime - The current time from the Cesium clock.
+   * @returns {object|null} An object with camera position and orientation, or null.
+   */
+  getCameraStateAtTime(currentTime) {
+    if (!this._currentTourData || !this._currentTourData.perPointData || this._currentTourData.perPointData.length === 0) {
+      return null;
+    }
+
+    // 1. Find the person's position at the current time by interpolating the tour data.
+    const personPosition = this._interpolatePersonPosition(this._currentTourData.perPointData, currentTime);
+    if (!personPosition) {
+      return null;
+    }
+
+    // 2. Get current interactive settings.
+    const pitch = Cesium.Math.toRadians(this._settingsManager.get('cameraPitch'));
+    const range = this._settingsManager.get('cameraDistance');
+    
+    // 3. Calculate orbital heading based on tour progress (same logic as old implementation).
+    const tourDuration = Cesium.JulianDate.secondsDifference(this._currentTourData.stopTime, this._currentTourData.startTime);
+    const elapsedTime = Cesium.JulianDate.secondsDifference(currentTime, this._currentTourData.startTime);
+    const tourProgress = tourDuration > 0 ? Math.min(elapsedTime / tourDuration, 1.0) : 0;
+    const heading = Cesium.Math.toRadians(tourProgress * 360);
+
+    // 4. Return the new 'lookAt' command object.
+        return {
+          lookAt: {
+            target: personPosition,
+            hpr: new Cesium.HeadingPitchRange(heading, pitch, range)
+          }
+        };
+      }
+    
+      /**
+       * Interpolates the position from a path of points at a given time.
+       * @private
+       * @param {Array<object>} path - The path points (tourData.perPointData).
+       * @param {Cesium.JulianDate} currentTime - The time at which to find the position.
+       * @returns {Cesium.Cartesian3|null} The interpolated position or null.
+       */
+      _interpolatePersonPosition(path, currentTime) {
+        if (path.length === 0) {
+          return null;
+        }
+    
+        const hasNativeTimestamps = path[0].time !== null;
+    
+        // Binary search to find the segment of the path for the current time.
+        let low = 0;
+        let high = path.length - 1;
+        let i = -1;
+    
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          const midTime = hasNativeTimestamps ? Cesium.JulianDate.fromDate(path[mid].time) : Cesium.JulianDate.addSeconds(this._currentTourData.startTime, path[mid].projectedTime, new Cesium.JulianDate());
+          
+          if (Cesium.JulianDate.lessThan(midTime, currentTime)) {
+            i = mid;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+    
+        if (i < 0) {
+          const firstPoint = path[0];
+          return Cesium.Cartesian3.fromDegrees(firstPoint.lon, firstPoint.lat, firstPoint.ele);
+        }
+        if (i >= path.length - 1) {
+          const lastPoint = path[path.length - 1];
+          return Cesium.Cartesian3.fromDegrees(lastPoint.lon, lastPoint.lat, lastPoint.ele);
+        }
+    
+        const p1 = path[i];
+        const p2 = path[i + 1];
+    
+        const time1 = hasNativeTimestamps ? Cesium.JulianDate.fromDate(p1.time) : Cesium.JulianDate.addSeconds(this._currentTourData.startTime, p1.projectedTime, new Cesium.JulianDate());
+        const time2 = hasNativeTimestamps ? Cesium.JulianDate.fromDate(p2.time) : Cesium.JulianDate.addSeconds(this._currentTourData.startTime, p2.projectedTime, new Cesium.JulianDate());
+    
+        const timeSinceP1 = Cesium.JulianDate.secondsDifference(currentTime, time1);
+        const timeBetweenPoints = Cesium.JulianDate.secondsDifference(time2, time1);
+        if (timeBetweenPoints <= 0) {
+            return Cesium.Cartesian3.fromDegrees(p1.lon, p1.lat, p1.ele);
+        }
+        const alpha = timeSinceP1 / timeBetweenPoints;
+    
+        const pos1 = Cesium.Cartesian3.fromDegrees(p1.lon, p1.lat, p1.ele);
+        const pos2 = Cesium.Cartesian3.fromDegrees(p2.lon, p2.lat, p2.ele);
+    
+        return Cesium.Cartesian3.lerp(pos1, pos2, alpha, new Cesium.Cartesian3());
+      }
+    }
+    
+    export default OverheadCameraStrategy;
+

@@ -13,10 +13,9 @@ class CameraController {
    * @param {SettingsManager} settingsManager - The application's settings manager.
    * @param {TourController} tourController - The application's tour controller.
    */
-  constructor(viewer, settingsManager, tourController) {
+  constructor(viewer, settingsManager) {
     this._viewer = viewer;
     this._settingsManager = settingsManager;
-    this._tourController = tourController;
     this._activeStrategy = null;
     this._clockShouldAnimateCallback = null; // Callback to start Cesium clock
     this._tourEndCallback = null; // Callback for when tour ends (fade-out complete)
@@ -84,55 +83,92 @@ class CameraController {
       return;
     }
 
-    this._state = 'FADING_IN';
-
-    const transitionDuration = this._settingsManager.get('cameraTransitionDur');
+    const transitionDuration = 0; //this._settingsManager.get('cameraTransitionDur');
     if (transitionDuration === 0) {
       // Skip fade-in if duration is 0
       this._onFadeInComplete();
       return;
     }
 
-    const startCameraState = overviewCameraState;
-    const endCameraState = this._activeStrategy.getCameraStateAtTime(this._currentTourData.startTime);
+    const endCameraStateCommand = this._activeStrategy.getCameraStateAtTime(this._currentTourData.startTime);
 
-    if (!endCameraState) {
+    if (!endCameraStateCommand) {
         logger.error("CameraController: Could not get start state for camera strategy.");
         this._onFadeInComplete(); // Proceed without fade
         return;
     }
+    
+    // Convert the command to a state flyTo can use.
+    const flyToState = this._calculateFlyToState(endCameraStateCommand);
 
-    this._fadeTween = new Cesium.Tween({
-      startObject: {
-        position: startCameraState.position,
-        heading: startCameraState.heading,
-        pitch: startCameraState.pitch,
-        roll: startCameraState.roll,
-      },
-      stopObject: {
-        position: endCameraState.position,
-        heading: endCameraState.orientation.heading,
-        pitch: endCameraState.orientation.pitch,
-        roll: endCameraState.orientation.roll,
-      },
-      duration: transitionDuration,
-      easingFunction: Cesium.EasingFunction.SINE_IN_OUT,
-      update: (value) => {
-        this._viewer.camera.setView({
-          destination: value.position,
-          orientation: {
-            heading: value.heading,
-            pitch: value.pitch,
-            roll: value.roll,
+    if (this._settingsManager.get('cameraStrategy') === 'cinematic') {
+        this._viewer.camera.flyTo({
+          destination: flyToState.position,
+          orientation: flyToState.orientation,
+          duration: transitionDuration,
+          easingFunction: Cesium.EasingFunction.SINE_IN_OUT,
+          complete: () => {
+            this._onFadeInComplete();
           },
         });
-      },
-      complete: () => {
+    } else {
+        // For interactive cameras, snap instantly to the start position.
+        this._viewer.camera.setView({
+            destination: flyToState.position,
+            orientation: flyToState.orientation
+        });
         this._onFadeInComplete();
-      },
-    });
+    }
   }
 
+  /**
+   * Converts a state command object (which could be lookAt or setView)
+   * into a { position, orientation } object suitable for flyTo.
+   * @param {object} stateCommand - The command object from a strategy.
+   * @returns {object} A { position, orientation } object.
+   * @private
+   */
+  _calculateFlyToState(stateCommand) {
+    if (stateCommand.setView) {
+      return {
+        position: stateCommand.setView.destination,
+        orientation: stateCommand.setView.orientation
+      };
+    }
+
+    if (stateCommand.lookAt) {
+      const { target, hpr } = stateCommand.lookAt;
+      
+      // This is the robust manual calculation to find the camera position
+      // and orientation that results from a "lookAt" command.
+      const transform = Cesium.Transforms.headingPitchRollToFixedFrame(target, new Cesium.HeadingPitchRoll(hpr.heading, 0, 0));
+      const x = -hpr.range * Math.cos(hpr.pitch);
+      const z = hpr.range * Math.sin(hpr.pitch);
+      const localOffset = new Cesium.Cartesian3(x, 0, z);
+      const position = Cesium.Matrix4.multiplyByPoint(transform, localOffset, new Cesium.Cartesian3());
+
+      const direction = Cesium.Cartesian3.normalize(Cesium.Cartesian3.subtract(target, position, new Cesium.Cartesian3()), new Cesium.Cartesian3());
+      const up = Cesium.Cartesian3.normalize(target, new Cesium.Cartesian3());
+      const right = Cesium.Cartesian3.normalize(Cesium.Cartesian3.cross(direction, up, new Cesium.Cartesian3()), new Cesium.Cartesian3());
+      const trueUp = Cesium.Cartesian3.cross(right, direction, new Cesium.Cartesian3());
+      const rotationMatrix = Cesium.Matrix3.fromRowMajorArray([right.x, right.y, right.z, trueUp.x, trueUp.y, trueUp.z, -direction.x, -direction.y, -direction.z]);
+      const finalHpr = Cesium.HeadingPitchRoll.fromQuaternion(Cesium.Quaternion.fromRotationMatrix(rotationMatrix));
+      
+      return {
+        position: position,
+        orientation: {
+          heading: finalHpr.heading,
+          pitch: finalHpr.pitch,
+          roll: 0.0 // Force roll to be zero for transitions
+        }
+      };
+    }
+    
+    // Fallback for older strategies that might still return position/orientation directly
+    // This path is temporary for the current debugging phase.
+    return stateCommand;
+  }
+  
   /**
    * Callback executed when fade-in transition is complete.
    * @private
@@ -152,88 +188,31 @@ class CameraController {
     logger.info('CameraController: Stopping tour with fade-out.');
     if (this._state === 'IDLE') return; // Already stopped or not playing
 
-    const transitionDuration = this._settingsManager.get('cameraTransitionDur');
-    const startCameraState = {
-      position: this._viewer.camera.position.clone(),
-      heading: this._viewer.camera.heading,
-      pitch: this._viewer.camera.pitch,
-      roll: this._viewer.camera.roll,
-    };
-    
-    // Determine the end overview state (what would `zoomToRoute` produce)
-    let endOverviewState = {};
-    if (this._currentTourData && this._currentTourData.perPointData && this._currentTourData.perPointData.length > 0) {
-      // Temporarily set state to IDLE to prevent updateCamera from interfering while we calculate overview
-      const originalState = this._state;
-      this._state = 'IDLE';
+    const transitionDuration = 0; //this._settingsManager.get('cameraTransitionDur');
+    this._state = 'FADING_OUT';
 
-      const boundingSphere = Cesium.BoundingSphere.fromPoints(
-        this._currentTourData.perPointData.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele))
-      );
-      this._viewer.camera.flyToBoundingSphere(boundingSphere, {
-        duration: 0, // Instant fly to get the target camera state
-        complete: () => {
-          endOverviewState.position = this._viewer.camera.position.clone();
-          endOverviewState.heading = this._viewer.camera.heading;
-          endOverviewState.pitch = this._viewer.camera.pitch;
-          endOverviewState.roll = this._viewer.camera.roll;
-
-          // Now initiate the fade-out tween
-          this._state = 'FADING_OUT'; // Restore state for tween
-          if (transitionDuration === 0) {
-            this._viewer.camera.setView({
-              destination: endOverviewState.position,
-              orientation: {
-                heading: endOverviewState.heading,
-                pitch: endOverviewState.pitch,
-                roll: endOverviewState.roll,
-              },
-            });
+    // Determine the end overview state by flying to the bounding sphere of the route
+    if (this._settingsManager.get('cameraStrategy') === 'cinematic') {
+      if (this._currentTourData && this._currentTourData.perPointData && this._currentTourData.perPointData.length > 0) {
+        const boundingSphere = Cesium.BoundingSphere.fromPoints(
+          this._currentTourData.perPointData.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele))
+        );
+        
+        this._viewer.camera.flyToBoundingSphere(boundingSphere, {
+          duration: transitionDuration,
+          easingFunction: Cesium.EasingFunction.SINE_IN_OUT,
+          complete: () => {
             this._onFadeOutComplete();
-          } else {
-            this._startFadeOutTween(startCameraState, endOverviewState, transitionDuration);
           }
-        }
-      });
-    } else {
-        // No tour data or invalid, just fade to current view if duration > 0 or instant complete
-        endOverviewState = startCameraState; // Stay at current view
-        this._state = 'FADING_OUT';
-        if (transitionDuration === 0) {
-            this._onFadeOutComplete();
-        } else {
-            this._startFadeOutTween(startCameraState, endOverviewState, transitionDuration);
-        }
-    }
-  }
-
-  /**
-   * Helper to start the fade-out tween.
-   * @param {object} startState - The camera state at the beginning of the fade-out.
-   * @param {object} endState - The camera state at the end of the fade-out (overview).
-   * @param {number} duration - The duration of the tween.
-   * @private
-   */
-  _startFadeOutTween(startState, endState, duration) {
-    this._fadeTween = new Cesium.Tween({
-      startObject: startState,
-      stopObject: endState,
-      duration: duration,
-      easingFunction: Cesium.EasingFunction.SINE_IN_OUT,
-      update: (value) => {
-        this._viewer.camera.setView({
-          destination: value.position,
-          orientation: {
-            heading: value.heading,
-            pitch: value.pitch,
-            roll: value.roll,
-          },
         });
-      },
-      complete: () => {
+      } else {
+        // If no tour data, just complete the stop immediately.
         this._onFadeOutComplete();
-      },
-    });
+      }
+    } else {
+      // For interactive cameras, just stop without any camera movement.
+      this._onFadeOutComplete();
+    }
   }
 
   /**
@@ -273,19 +252,16 @@ class CameraController {
         if (!this._activeStrategy) return;
         const cameraState = this._activeStrategy.getCameraStateAtTime(currentTime);
         if (cameraState) {
-          this._viewer.camera.setView({
-            destination: cameraState.position,
-            orientation: {
-              heading: cameraState.orientation.heading,
-              pitch: cameraState.orientation.pitch,
-              roll: cameraState.orientation.roll,
-            },
-          });
+          if (cameraState.lookAt) {
+            this._viewer.camera.lookAt(cameraState.lookAt.target, cameraState.lookAt.hpr);
+          } else if (cameraState.setView) {
+            this._viewer.camera.setView(cameraState.setView);
+          }
         }
         break;
       case 'FADING_IN':
       case 'FADING_OUT':
-        // Cesium.Tween is controlling the camera directly, no action needed here.
+        // The camera is being controlled by flyTo or flyToBoundingSphere, no action needed.
         break;
     }
 

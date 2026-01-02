@@ -133,6 +133,12 @@ class UIManager {
     this.cameraTransitionDurDecrement = document.getElementById('camera-transition-dur-decrement');
     this.cameraTransitionDurDisplay = document.getElementById('camera-transition-dur-display');
     this.cameraTransitionDurIncrement = document.getElementById('camera-transition-dur-increment');
+    this.cameraGazeSmoothingDecrement = document.getElementById('camera-gaze-smoothing-decrement');
+    this.cameraGazeSmoothingDisplay = document.getElementById('camera-gaze-smoothing-display');
+    this.cameraGazeSmoothingIncrement = document.getElementById('camera-gaze-smoothing-increment');
+    this.cameraPathDensityDecrement = document.getElementById('camera-path-density-decrement');
+    this.cameraPathDensityDisplay = document.getElementById('camera-path-density-display');
+    this.cameraPathDensityIncrement = document.getElementById('camera-path-density-increment');
   }
 
   init() {
@@ -334,18 +340,23 @@ class UIManager {
     this.smoothingPeriodIncrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(10));
 
     // Cinematic Camera Controls Listeners
-    this.cameraPathDetailDecrement.addEventListener('click', () => this._adjustCameraPathDetail(-5));
-    this.cameraPathDetailIncrement.addEventListener('click', () => this._adjustCameraPathDetail(5));
+    this.cameraPathDetailDecrement.addEventListener('click', () => this._adjustCameraPathDetail(-50));
+    this.cameraPathDetailIncrement.addEventListener('click', () => this._adjustCameraPathDetail(50));
     this.cameraSplineTensionDecrement.addEventListener('click', () => this._adjustCameraSplineTension(-0.1));
     this.cameraSplineTensionIncrement.addEventListener('click', () => this._adjustCameraSplineTension(0.1));
-    this.cameraLookAheadDecrement.addEventListener('click', () => this._adjustCameraLookAheadTime(-5)); // Adjust in minutes
-    this.cameraLookAheadIncrement.addEventListener('click', () => this._adjustCameraLookAheadTime(5)); // Adjust in minutes
+    this.cameraLookAheadDecrement.addEventListener('click', () => this._adjustCameraLookAheadTime(-15)); // Adjust in minutes
+    this.cameraLookAheadIncrement.addEventListener('click', () => this._adjustCameraLookAheadTime(15)); // Adjust in minutes
     this.cameraMaxAzimuthDecrement.addEventListener('click', () => this._adjustCameraMaxAzimuth(-5));
     this.cameraMaxAzimuthIncrement.addEventListener('click', () => this._adjustCameraMaxAzimuth(5));
     this.cameraAzimuthFreqDecrement.addEventListener('click', () => this._adjustCameraAzimuthFreq(-0.01));
     this.cameraAzimuthFreqIncrement.addEventListener('click', () => this._adjustCameraAzimuthFreq(0.01));
     this.cameraTransitionDurDecrement.addEventListener('click', () => this._adjustCameraTransitionDur(-1));
     this.cameraTransitionDurIncrement.addEventListener('click', () => this._adjustCameraTransitionDur(1));
+
+    this.cameraGazeSmoothingDecrement.addEventListener('click', () => this._adjustCameraGazeSmoothing(-5)); // Adjust in minutes
+    this.cameraGazeSmoothingIncrement.addEventListener('click', () => this._adjustCameraGazeSmoothing(5)); // Adjust in minutes
+    this.cameraPathDensityDecrement.addEventListener('click', () => this._adjustCameraPathDensity(-1));
+    this.cameraPathDensityIncrement.addEventListener('click', () => this._adjustCameraPathDensity(1));
 
     this._initializeSettingsBasedUI();
     this._updateCinematicControlsVisibility(); // Set initial visibility
@@ -691,6 +702,45 @@ class UIManager {
   }
 
   /**
+   * Adjusts camera gaze smoothing by a given step and updates the SettingsManager.
+   * @param {number} stepMinutes - The amount in minutes to adjust by.
+   * @private
+   */
+  _adjustCameraGazeSmoothing(stepMinutes) {
+    const currentValueSeconds = SettingsManager.get('cameraGazeSmoothing');
+    const currentValueMinutes = currentValueSeconds / 60;
+    const newValueMinutes = currentValueMinutes + stepMinutes;
+    SettingsManager.set('cameraGazeSmoothing', newValueMinutes * 60);
+  }
+
+  /**
+   * Updates the display of the camera gaze smoothing.
+   * @param {number} valueSeconds - The new value in seconds.
+   */
+  updateCameraGazeSmoothingDisplay(valueSeconds) {
+    this.cameraGazeSmoothingDisplay.textContent = `${valueSeconds / 60}min`;
+  }
+
+  /**
+   * Adjusts camera path density by a given step and updates the SettingsManager.
+   * @param {number} step - The amount to adjust by.
+   * @private
+   */
+  _adjustCameraPathDensity(step) {
+    const currentValue = SettingsManager.get('cameraPathSampleDensity');
+    const newValue = currentValue + step;
+    SettingsManager.set('cameraPathSampleDensity', newValue);
+  }
+
+  /**
+   * Updates the display of the camera path density.
+   * @param {number} value - The new value (samples per minute).
+   */
+  updateCameraPathDensityDisplay(value) {
+    this.cameraPathDensityDisplay.textContent = value;
+  }
+
+  /**
    * Toggles the visibility of cinematic camera controls based on the active camera strategy.
    * @private
    */
@@ -765,6 +815,12 @@ class UIManager {
 
     this.updateCameraTransitionDurDisplay(SettingsManager.get('cameraTransitionDur'));
     SettingsManager.subscribe('cameraTransitionDur', (value) => this.updateCameraTransitionDurDisplay(value));
+
+    this.updateCameraGazeSmoothingDisplay(SettingsManager.get('cameraGazeSmoothing'));
+    SettingsManager.subscribe('cameraGazeSmoothing', (value) => this.updateCameraGazeSmoothingDisplay(value));
+
+    this.updateCameraPathDensityDisplay(SettingsManager.get('cameraPathSampleDensity'));
+    SettingsManager.subscribe('cameraPathSampleDensity', (value) => this.updateCameraPathDensityDisplay(value));
   }
 }
 

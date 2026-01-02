@@ -57,8 +57,8 @@
         <h4>Camera</h4>
         <select id="camera-strategy">
           <option value="third-person">Third-Person</option>
-          <option value="overhead" selected>Overhead</option>
-          <option value="cinematic">Cinematic</option>
+          <option value="overhead">Overhead</option>
+          <option value="cinematic" selected>Cinematic</option>
         </select>
         <div class="slider-group">
           <label for="camera-distance">
@@ -127,6 +127,22 @@
               <button id="camera-transition-dur-decrement" class="adjust-button">-</button>
               <span id="camera-transition-dur-display">3</span>
               <button id="camera-transition-dur-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Gaze Smoothing (s):</label>
+            <div class="number-input-widget">
+              <button id="camera-gaze-smoothing-decrement" class="adjust-button">-</button>
+              <span id="camera-gaze-smoothing-display">300</span>
+              <button id="camera-gaze-smoothing-increment" class="adjust-button">+</button>
+            </div>
+          </div>
+          <div class="number-input-group">
+            <label>Path Density (smp/min):</label>
+            <div class="number-input-widget">
+              <button id="camera-path-density-decrement" class="adjust-button">-</button>
+              <span id="camera-path-density-display">2</span>
+              <button id="camera-path-density-increment" class="adjust-button">+</button>
             </div>
           </div>
         </div>

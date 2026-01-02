@@ -43,7 +43,8 @@ This project is a web-based application for visualizing GPX track data in a rich
 *   **Collapsible UI & Quick Controls:** The main side panel can be collapsed into a narrow bar containing vertical sliders for quick, on-the-fly adjustments to speed and zoom without obscuring the view.
 *   **3D Route Visualization:** Renders GPX tracks on a high-resolution 3D globe with real-world terrain.
 *   **Cinematic Tour:** Provides an automated fly-through of the route with multiple, dynamically switchable camera perspectives:
-    *   **Overhead (Default):** A dynamic camera that orbits the traveler.
+    *   **Cinematic (Default):** A sophisticated, smooth camera with an anticipatory gaze that sweeps across the landscape. Its motion can be fine-tuned with several parameters.
+    *   **Overhead:** A dynamic camera that orbits the traveler.
     *   **Third-Person:** A classic follow-cam view.
 *   **Time-Based Animation:** Utilizes Cesium's native clock for robust and smooth animation.
 *   **Smart Speed Control:** Automatically calculates a pleasant default playback speed, with a logarithmic slider for fine-tuned adjustments.

@@ -19,6 +19,7 @@ class Person {
           scale: 1,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM, // Anchor billboard at its bottom
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         label: {
           text: '',
@@ -27,6 +28,7 @@ class Person {
           backgroundColor: new Cesium.Color(0.1, 0.1, 0.1, 0.7),
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM, // Anchor label at its bottom
           pixelOffset: new Cesium.Cartesian2(0, -50),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
       });
   }

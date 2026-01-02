@@ -31,11 +31,12 @@ class App {
     this.routes = []; // To cache routes from storage
     this.activeRouteId = null; // To track the currently loaded route
     this.poiService = null; // To hold the PoiService instance
-    this.tourData = null; // This will hold the final, unified data for the tour
+    this.planProfile = null; // This will hold the rich object for the tour
     this.hasNativeTimestamps = false;
     this.actualPerformanceStats = null;
     this.baseRouteStats = null;
     this.tourPercentage = 0; // To track tour progress
+    this.cameraUpdateListener = null; // NEW: To hold the reference to the camera update listener
   }
 
   /**
@@ -46,11 +47,13 @@ class App {
   setState(newState) {
     if (this.state === newState) return;
     logger.info(`State change: ${this.state} -> ${newState}`);
-    if (this.state === 'TOUR_PLAYING' && newState !== 'TOUR_PLAYING') {
+
+    // --- State Exit Logic ---
+    if (this.state === 'TOUR_PLAYING') {
       this.performanceTuner.deactivate();
     }
 
-    // State Transition Logic
+    // --- State Entry Logic ---
     if (newState === 'TOUR_PLAYING') {
       if (this.state === 'TOUR_PAUSED') {
         // Just resume the clock, don't re-trigger the full start sequence
@@ -66,7 +69,7 @@ class App {
       this.statsOverlay.expandRouteStats();
       this.ui.setRewindButtonIcon(true); // Always initialize to forward-facing icon
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
-        this._stopTour(); // Delegate to new stop tour method
+        this._stopTour();
       }
     }
 
@@ -87,7 +90,7 @@ class App {
     logger.info('Initializing application.');
     await this.initCesium();
     this.performanceTuner = new PerformanceTuner(this.viewer); // Instantiate PerformanceTuner
-    this.cameraController = new CameraController(this.viewer, SettingsManager); // NEW: Instantiate CameraController
+    this.cameraController = new CameraController(this.viewer, SettingsManager); 
 
     this.person = new Person(this.viewer);
     this.person.create();
@@ -124,8 +127,14 @@ class App {
     // Subscribe to tourSpeed changes
     SettingsManager.subscribe('tourSpeed', (speed) => this.tourController.setSpeed(speed));
 
-    // Subscribe to camera-related settings changes and notify CameraController
-    SettingsManager.subscribe('cameraStrategy', () => this.cameraController.onSettingsChange());
+    // Subscribe to camera-related settings changes
+    SettingsManager.subscribe('cameraStrategy', (newStrategyName) => {
+      // If a tour is active, immediately apply the new strategy
+      if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
+        logger.info(`Dynamically changing camera strategy to: ${newStrategyName}`);
+        this.cameraController.setStrategy(newStrategyName, this.planProfile);
+      }
+    });
     SettingsManager.subscribe('cameraDistance', () => this.cameraController.onSettingsChange());
     SettingsManager.subscribe('cameraPitch', () => this.cameraController.onSettingsChange());
     SettingsManager.subscribe('cameraPathDetail', () => this.cameraController.onSettingsChange());
@@ -225,26 +234,6 @@ class App {
       logger.info(`Found url in URL, attempting to auto-load: ${urlToLoad}`);
       this.handleUrlLoad(urlToLoad);
     }
-
-    // Add a listener to update our CameraController and UI
-    this.viewer.scene.postRender.addEventListener(() => {
-      if (!this.tourController.tour) return;
-
-      this.cameraController.updateCamera(this.viewer.clock.currentTime, (state) => {
-        // Callback from CameraController with the current state of the tour
-        if (!state) return;
-        
-        this.tourPercentage = state.percentage;
-        this.ui.updateScrubber(state.percentage);
-        this.ui.updateTimeDisplay(state.timeString);
-        
-        if (this.person.entity && this.person.entity.label) {
-            this.person.entity.label.text = state.timeString;
-        }
-        
-        this.statsOverlay.updateReplayStats(state.liveStats, this.hasNativeTimestamps);
-      });
-    });
   }
 
   /**
@@ -551,8 +540,8 @@ class App {
       refuelThresholdKcal
     );
 
-    // --- 3. Time Simulation ---
-    const planProfile = PerformancePlanner.planPerformanceProfile(
+    // --- 3. Time Simulation & Finalization ---
+    this.planProfile = PerformancePlanner.planPerformanceProfile(
       processedData,
       targetSpeedKmh,
       degradation,
@@ -560,26 +549,21 @@ class App {
       restPerRefuelMin
     );
     
-    // --- 4. Finalize Data ---
-    // This is the final, unified data for the tour and UI rendering
-    this.tourData = planProfile.perPointData; 
-
     // --- 5. Final UI Update ---
     this.statsOverlay.updateRouteStats({
       ...this.baseRouteStats,
       ...this.actualPerformanceStats,
       totalCalories: energyProfile.totalKcal.toFixed(0),
-      totalPlannedTime: planProfile.totalPlannedTime,
+      totalPlannedTime: this.planProfile.totalPlannedTime,
     });
 
     this.clearRefuelMarkers();
     this.renderRefuelMarkers(refuelPoints);
 
     // --- 6. Prepare Tour ---
-    this.tourController.prepareTour(this.tourData);
+    this.tourController.prepareTour(this.planProfile);
     // NEW: Set the initial strategy on the camera controller so it's ready for playback
-    this.cameraController.setStrategy(SettingsManager.get('cameraStrategy'), this.tourData);
-    this.cameraController.onSettingsChange();
+    this.cameraController.setStrategy(SettingsManager.get('cameraStrategy'), this.planProfile);
   }
 
   /**
@@ -1013,11 +997,26 @@ class App {
    */
   _startTour() {
     this.performanceTuner.activate();
-    this.ui.collapsePanel(); // Auto-collapse the panel
-    // Ensure the tourController is prepared for playback
-    this.tourController.startTour(); // This will eventually be called by CameraController upon fade-in complete
+    this.ui.collapsePanel();
     
-    // Pass current camera state for fade-in transition
+    // Add the listener and store the removal function
+    if (this.cameraUpdateListener) {
+      this.cameraUpdateListener(); // Remove any old listener just in case
+    }
+    this.cameraUpdateListener = this.viewer.clock.onTick.addEventListener(() => {
+      if (!this.tourController.tour) return;
+      this.cameraController.updateCamera(this.viewer.clock.currentTime, (state) => {
+        if (!state) return;
+        this.tourPercentage = state.percentage;
+        this.ui.updateScrubber(state.percentage);
+        this.ui.updateTimeDisplay(state.timeString);
+        if (this.person.entity && this.person.entity.label) {
+            this.person.entity.label.text = state.timeString;
+        }
+        this.statsOverlay.updateReplayStats(state.liveStats, this.hasNativeTimestamps);
+      });
+    });
+
     const overviewCameraState = {
       position: this.viewer.camera.position.clone(),
       heading: this.viewer.camera.heading,
@@ -1025,16 +1024,13 @@ class App {
       roll: this.viewer.camera.roll
     };
     
-    // CameraController will manage the actual camera movement and the clock start
-    this.cameraController.startTour(this.tourData, overviewCameraState, () => {
-      // Callback from CameraController when fade-in is complete and tour should truly start
+    this.cameraController.startTour(this.planProfile, overviewCameraState, () => {
       this.viewer.clock.shouldAnimate = true;
     }, () => {
-      // Callback from CameraController when tour playback reaches end (fade-out complete)
-      this.setState('ROUTE_LOADED'); // Go back to loaded state
+      this.setState('ROUTE_LOADED');
     });
 
-    if (this.state === 'ROUTE_LOADED') { // Only change stats overlay if starting a new tour
+    if (this.state === 'ROUTE_LOADED') {
       this.statsOverlay.collapseRouteStats();
       this.statsOverlay.showReplayStats();
       this.statsOverlay.expandReplayStats();
@@ -1042,10 +1038,23 @@ class App {
   }
 
   /**
-   * Stops the tour sequence, including fade-out animation via CameraController.
+   * Stops the tour sequence and correctly cleans up listeners.
    * @private
    */
   _stopTour() {
+    // Remove the camera update listener
+    if (this.cameraUpdateListener) {
+      this.cameraUpdateListener();
+      this.cameraUpdateListener = null;
+    }
+    
+    // Explicitly restore default camera controls by resetting the transform
+    this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+
+    this.viewer.clock.shouldAnimate = false;
+    if (this.viewer.clock.startTime) {
+      this.viewer.clock.currentTime = this.viewer.clock.startTime.clone();
+    }
     this.performanceTuner.deactivate();
     this.tourController.stopTour();
     this.ui.updateScrubber(0);
@@ -1053,21 +1062,23 @@ class App {
 
     // Manually update time displays to the start time
     const startTime = this.viewer.clock.startTime;
-    const jsDate = Cesium.JulianDate.toDate(startTime);
-    const year = jsDate.getFullYear();
-    const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
-    const day = jsDate.getDate().toString().padStart(2, '0');
-    const hours = jsDate.getHours().toString().padStart(2, '0');
-    const minutes = jsDate.getMinutes().toString().padStart(2, '0');
-    const seconds = jsDate.getSeconds().toString().padStart(2, '0');
-    const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    if (startTime) {
+      const jsDate = Cesium.JulianDate.toDate(startTime);
+      const year = jsDate.getFullYear();
+      const month = (jsDate.getMonth() + 1).toString().padStart(2, '0');
+      const day = jsDate.getDate().toString().padStart(2, '0');
+      const hours = jsDate.getHours().toString().padStart(2, '0');
+      const minutes = jsDate.getMinutes().toString().padStart(2, '0');
+      const seconds = jsDate.getSeconds().toString().padStart(2, '0');
+      const timeString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 
-    this.ui.updateTimeDisplay(timeString);
-    if (this.person.entity && this.person.entity.label) {
-      this.person.entity.label.text = timeString;
+      this.ui.updateTimeDisplay(timeString);
+      if (this.person.entity && this.person.entity.label) {
+        this.person.entity.label.text = timeString;
+      }
     }
 
-    // CameraController will handle the fade-out
+    // Call cameraController's stop AFTER all other cleanup.
     this.cameraController.stopTour();
   }
 }

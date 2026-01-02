@@ -15,20 +15,22 @@ class TourController {
 
   /**
    * Prepares the cinematic tour by setting up the clock and position properties.
-   * @param {Array<object>} performanceData - An array of points with lon, lat, ele, and time properties.
+   * @param {object} planProfile - The full tour data object from PerformancePlanner.
    */
-  prepareTour(performanceData) {
+  prepareTour(planProfile) {
     logger.info('prepareTour called');
-    // CameraController will manage stopping existing tours and camera settings.
+    
+    const { perPointData, startTime, stopTime } = planProfile;
+    const points = perPointData;
+    const hasNativeTimestamps = points.length > 0 && points[0].time;
 
-    const hasNativeTimestamps = performanceData.length > 0 && performanceData[0].time;
-    let points = performanceData;
+    if (!startTime || !stopTime) {
+      logger.error('Cannot start tour: The plan profile is missing start or stop time.');
+      alert('Cannot start tour: The plan profile is missing start or stop time.');
+      return;
+    }
 
     const personPositionProperty = new Cesium.SampledPositionProperty();
-    let startTime = null;
-    let stopTime = null;
-
-    // Use a fixed start time for synthetic routes for consistency
     const syntheticBaseTime = Cesium.JulianDate.fromIso8601("2025-01-01T00:00:00Z");
 
     points.forEach(p => {
@@ -36,27 +38,12 @@ class TourController {
       if (hasNativeTimestamps) {
         julianDate = Cesium.JulianDate.fromDate(p.time);
       } else {
-        // Use projected time in seconds, add it to a consistent base time
         julianDate = Cesium.JulianDate.addSeconds(syntheticBaseTime, p.projectedTime, new Cesium.JulianDate());
       }
       
       const personCartesian = Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.ele);
-
       personPositionProperty.addSample(julianDate, personCartesian);
-
-      if (startTime === null || Cesium.JulianDate.lessThan(julianDate, startTime)) {
-        startTime = julianDate;
-      }
-      if (stopTime === null || Cesium.JulianDate.greaterThan(julianDate, stopTime)) {
-        stopTime = julianDate;
-      }
     });
-
-    if (startTime === null || stopTime === null) {
-      logger.error('Cannot start tour: GPX file does not contain any valid timestamps.');
-      alert('Cannot start tour: GPX file does not contain any valid timestamps.');
-      return;
-    }
 
     // Configure Cesium's clock
     this.viewer.clock.startTime = startTime.clone();

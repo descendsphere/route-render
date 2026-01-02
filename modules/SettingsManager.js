@@ -18,7 +18,7 @@ class SettingsManager {
     _settingsSchema = {
         cameraStrategy: {
             type: 'string',
-            defaultValue: 'overhead',
+            defaultValue: 'cinematic',
             url: true,
             options: ['overhead', 'third-person', 'cinematic'],
         },
@@ -46,10 +46,10 @@ class SettingsManager {
         // Cinematic Camera Settings
         cameraPathDetail: {
             type: 'number',
-            defaultValue: 20,
+            defaultValue: 100,
             url: true,
-            min: 5,
-            max: 100,
+            min: 50,
+            max: 1000,
         },
         cameraSplineTension: {
             type: 'number',
@@ -60,10 +60,10 @@ class SettingsManager {
         },
         cameraLookAheadTime: {
             type: 'number',
-            defaultValue: 900, // 15 minutes in seconds
+            defaultValue: 3600, // 60 minutes
             url: true,
-            min: 60,   // 1 minute in seconds
-            max: 7200, // 120 minutes (2 hours) in seconds
+            min: 900,   // 15 minutes
+            max: 36000, // 600 minutes
         },
         cameraMaxAzimuth: {
             type: 'number',
@@ -85,6 +85,20 @@ class SettingsManager {
             url: true,
             min: 0,
             max: 10,
+        },
+        cameraGazeSmoothing: {
+            type: 'number',
+            defaultValue: 1800, // 30 minutes
+            url: true,
+            min: 300,  // 5 minutes
+            max: 3600, // 60 minutes
+        },
+        cameraPathSampleDensity: {
+            type: 'number',
+            defaultValue: 2, // Samples per minute. Larger = smoother path but longer load time.
+            url: true,
+            min: 1,  // 1 sample per minute
+            max: 12, // 1 sample every 5 seconds
         },
         tourSpeed: {
             type: 'number',

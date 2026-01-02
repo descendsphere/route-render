@@ -18,8 +18,11 @@ class PerformancePlanner {
     logger.info('Starting performance planning simulation.');
 
     if (!perPointData || perPointData.length < 2) {
-      return { totalPlannedTime: 0, perPointData: perPointData };
+      return { totalPlannedTime: 0, perPointData: perPointData, startTime: null, stopTime: null };
     }
+
+    const hasNativeTimestamps = perPointData[0].time !== null;
+    let startTime, stopTime;
 
     const targetSpeedMps = (targetSpeedKmh * 1000) / 3600;
     const restPerRefuelSec = restPerRefuelMin * 60;
@@ -31,6 +34,15 @@ class PerformancePlanner {
     let emaPlannedSpeed = null;
     let emaPlannedEleRate = null;
     let emaPlannedKmRate = null;
+
+    // For synthetic routes, create a consistent base time.
+    const syntheticBaseTime = Cesium.JulianDate.fromIso8601("2025-01-01T00:00:00Z");
+
+    if (hasNativeTimestamps) {
+        startTime = Cesium.JulianDate.fromDate(perPointData[0].time);
+    } else {
+        startTime = syntheticBaseTime;
+    }
 
     // Initialize first point
     augmentedData.push({
@@ -102,11 +114,19 @@ class PerformancePlanner {
         });
     }
     
+    if (hasNativeTimestamps) {
+        stopTime = Cesium.JulianDate.fromDate(perPointData[perPointData.length - 1].time);
+    } else {
+        stopTime = Cesium.JulianDate.addSeconds(syntheticBaseTime, cumulativeTimeSec, new Cesium.JulianDate());
+    }
+
     logger.info(`Finished planning simulation: ${cumulativeTimeSec.toFixed(0)} seconds`);
 
     return {
       totalPlannedTime: cumulativeTimeSec,
       perPointData: augmentedData,
+      startTime: startTime,
+      stopTime: stopTime,
     };
   }
 }

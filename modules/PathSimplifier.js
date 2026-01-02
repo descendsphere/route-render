@@ -18,15 +18,9 @@ class PathSimplifier {
     const simplifiedPoints = [points[0]];
     let lastPoint = points[0];
 
-    const geodesic = new Cesium.EllipsoidGeodesic();
-
     for (let i = 1; i < points.length; i++) {
       const currentPoint = points[i];
-      const lastCarto = Cesium.Cartographic.fromDegrees(lastPoint.lon, lastPoint.lat);
-      const currentCarto = Cesium.Cartographic.fromDegrees(currentPoint.lon, currentPoint.lat);
-
-      geodesic.setEndPoints(lastCarto, currentCarto);
-      const distance = geodesic.surfaceDistance;
+      const distance = Cesium.Cartesian3.distance(lastPoint, currentPoint);
 
       if (distance >= minDistance) {
         simplifiedPoints.push(currentPoint);
