@@ -1,0 +1,9 @@
+name = "reminder-propose-edit"
+description = "Reminds the AI to follow strict principles for proposing code changes."
+prompt = """
+For the upcoming code modification, please adhere to the following principles:
+1.  **Atomic Changes:** Ensure that each proposed change is a small, complete, and logical unit.
+2.  **Focused Scope:** Do not alter any existing code, comments, or whitespace that are unrelated to the current task. The only exception is updating section numbering in documentation if your changes require it.
+3.  **Propose, Don't Apply:** Show me the `old_string` and `new_string` for the `replace` tool, but wait for my approval before executing the change.
+4.  **Self-Correction:** After generating the `new_string`, please perform a self-correction pass to check for typos or logical errors.
+"""

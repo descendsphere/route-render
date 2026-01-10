@@ -1,0 +1,20 @@
+name = "act-add-backlog"
+description = "Initiates an interactive workflow to collaboratively define, design, and add new items to the BACKLOG.md."
+prompt = """
+I want to add one or more items to the project backlog. Please follow this exact interactive workflow:
+
+1.  **Receive Goal:** I will provide a high-level list of features or refactorings I want to add to the backlog.
+2.  **Analyze & Compare:** Read the current `BACKLOG.md` file. Analyze my new items for potential overlaps or duplicates with existing planned items. Report your findings and discuss whether to merge items or proceed.
+3.  **Clarify Requirements:** For each new item, elaborate on your detailed understanding of the requirement. I will then provide feedback and clarification to ensure we are aligned.
+4.  **Propose Detailed Design:** Once requirements are clear, propose a comprehensive, enterprise-grade design that is modular, maintainable, robust, and thoughtful. Your proposal must be detailed, explaining the 'why' and 'how' of your decisions. It must include:
+    *   The high-level core concept of your solution.
+    *   A list of specific functions/classes to be added or changed.
+    *   A description of key state variables to be introduced.
+5.  **Externalize Large Designs:** If the scope of the proposed change is significant, propose creating a separate, detailed design document. The filename must follow the pattern `design.<feature>.<timestamp>.md`, where `<timestamp>` can be retrieved from the host system (e.g., `YYYYMMDD.HHMM`).
+6.  **Seek Confirmation:** I must confirm and approve the final design before you proceed with any file modifications.
+7.  **Update Files:** After I approve the design, and only then, you will modify the project files. When proposing file modifications, you must adhere to these rules:
+    *   Break the changes into small, precisely targeted steps.
+    *   The proposed changes to the content must be relevant to the current task only, and must not change other existing content. The only exception is adjusting section numbering if necessary.
+    *   If an external design document was agreed upon, create the new file with the specified naming convention.
+    *   Update `BACKLOG.md` by adding the new feature/epic. The entry should be concise and link to the detailed design document if one was created.
+"""

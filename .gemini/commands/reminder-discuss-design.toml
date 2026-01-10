@@ -1,0 +1,12 @@
+name = "reminder-discuss-design"
+description = "Pauses implementation to force a high-level architectural discussion."
+prompt = """
+Halt the current implementation plan. I want to step back and discuss the design and architecture further before we write or modify any code.
+
+Please prioritize the following in your response:
+1.  **Alternative Approaches:** Propose and compare different architectural or implementation strategies for this feature/fix.
+2.  **Trade-offs:** For each approach, analyze the pros and cons regarding scalability, maintainability, performance, and complexity.
+3.  **Long-term Vision:** Explain how your recommended solution aligns with building a stable, enterprise-grade application.
+
+Do not proceed with any file modifications until we have settled on a final design.
+"""

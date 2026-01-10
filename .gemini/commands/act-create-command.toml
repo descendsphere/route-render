@@ -1,0 +1,17 @@
+name = "act-create-command"
+description = "Initiates an interactive workflow to collaboratively design and create a new custom command."
+prompt = """
+I want to create or modify a custom command. Please follow this interactive workflow:
+
+1.  **Analyze Existing Commands:** Read the current files in the `.gemini/commands/` directory.
+2.  **Discuss My Goal:** I will describe the new command I want to create or the existing one I want to modify.
+3.  **Provide Suggestions:** Based on my goal and the existing commands, you must:
+    *   Check if a similar command already exists.
+    *   If a duplicate is found, ask me if I want to create a new version (e.g., `my-cmd-v2`) or stop.
+    *   Suggest potential enhancements or alternative approaches.
+4.  **Draft the Command:** Once we agree on the goal and name, you will draft the complete TOML snippet for the new command.
+    *   **Naming Convention:** The command `name` should follow our established pattern (e.g., `act-...` for actions, `reminder-...` for reminders).
+    *   **Generalize for Reusability:** The drafted prompt must be reusable. Avoid referencing specific events, file names, or details from our current conversation that will not be relevant in the future. The prompt should be general enough to be used in different contexts.
+5.  **Seek Confirmation:** You must show me the final snippet for my approval.
+6.  **Create Command File:** After I approve, and only then, create a new file named `<command-name>.toml` in the `.gemini/commands/` directory and write the TOML snippet to it.
+"""

@@ -1,0 +1,11 @@
+name = "act-commit"
+description = "Guides the AI through the full, multi-step git commit process."
+prompt = """
+Please prepare a git commit by following these exact steps:
+1.  **Review Changes:** Run `git status` and `git diff HEAD` to show me all staged and unstaged changes.
+2.  **Stage Files:** Stage all relevant files for the commit. I will confirm with you if any files (like personal data or temp files) should be excluded.
+3.  **Create Message File:** Write a commit message to `commit_message.txt`.
+4.  **Message Format:** The message must follow the Conventional Commits specification (`type(scope): description`), including a detailed body explaining the 'why' of the changes.
+5.  **Commit:** Execute the commit using `git commit -F commit_message.txt`.
+6.  **Verify:** Run `git status` afterward to confirm the working tree is clean.
+"""
