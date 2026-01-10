@@ -31,6 +31,8 @@ class UIManager {
     this.onClearStorage = () => {};
     this.onAthleteProfileChange = () => {};
 
+    this.statsOverlay = null; // To hold a reference to the StatsOverlay instance
+
     // DOM Elements
     this.gpxFileInput = document.getElementById('gpx-file');
     this.playButton = document.getElementById('play-tour');
@@ -66,7 +68,6 @@ class UIManager {
     this.sidePanel = document.getElementById('side-panel');
     this.panelHeader = document.querySelector('.panel-header');
     this.panelToggleButton = document.getElementById('panel-toggle-icon');
-    this.quickControlsContainer = document.getElementById('quick-controls-container');
     this.speedSliderGroup = this.speedSlider.parentElement;
     this.distanceSliderGroup = this.cameraDistanceSlider.parentElement;
     this.pitchSliderGroup = this.cameraPitchSlider.parentElement;
@@ -391,7 +392,6 @@ class UIManager {
     this.cinematicCameraControls.style.display = 'none'; // Ensure hidden by default
     this.filenameSuggestion.style.display = 'none';
     this.athleteProfileControls.style.display = 'none';
-    this.quickControlsContainer.classList.remove('active');
 
     if (state === 'LOADING') {
       this.loadingIndicator.style.display = 'block';
@@ -403,11 +403,10 @@ class UIManager {
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.athleteProfileControls.style.display = 'block';
-      this.quickControlsContainer.classList.add('active');
       this.bottomPanelContainer.style.display = 'flex'; // Target the new parent
       this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(false);
-      this.tourControls.style.display = 'none';
+      this.tourControls.style.display = 'block';
       this._updateCinematicControlsVisibility(); // Update visibility based on current strategy
     } else if (state === 'TOUR_PLAYING') {
       this.styleControls.style.display = 'block';
@@ -415,11 +414,10 @@ class UIManager {
       this.performanceControls.style.display = 'block';
       this.filenameSuggestion.style.display = 'block';
       this.athleteProfileControls.style.display = 'block';
-      this.quickControlsContainer.classList.add('active');
       this.bottomPanelContainer.style.display = 'flex'; // Target the new parent
       this.customTourControls.style.display = 'flex'; // Also show the controls themselves
       this.setPlayPauseButtonState(true);
-      this.tourControls.style.display = 'none';
+      this.tourControls.style.display = 'block';
       this._updateCinematicControlsVisibility(); // Update visibility based on current strategy
     }
   }
@@ -530,24 +528,12 @@ class UIManager {
   collapsePanel() {
     if (!this.sidePanel.classList.contains('collapsed')) {
       this.sidePanel.classList.add('collapsed');
-      this.speedSliderGroup.classList.add('vertical-slider');
-      this.distanceSliderGroup.classList.add('vertical-slider');
-      this.pitchSliderGroup.classList.add('vertical-slider');
-      this.quickControlsContainer.appendChild(this.speedSliderGroup);
-      this.quickControlsContainer.appendChild(this.distanceSliderGroup);
-      this.quickControlsContainer.appendChild(this.pitchSliderGroup);
     }
   }
 
   expandPanel() {
     if (this.sidePanel.classList.contains('collapsed')) {
       this.sidePanel.classList.remove('collapsed');
-      this.speedSliderGroup.classList.remove('vertical-slider');
-      this.distanceSliderGroup.classList.remove('vertical-slider');
-      this.pitchSliderGroup.classList.remove('vertical-slider');
-      this.tourControls.appendChild(this.speedSliderGroup);
-      this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
-      this.cameraStrategyControls.appendChild(this.pitchSliderGroup);
     }
   }
 
@@ -821,6 +807,27 @@ class UIManager {
 
     this.updateCameraPathDensityDisplay(SettingsManager.get('cameraPathSampleDensity'));
     SettingsManager.subscribe('cameraPathSampleDensity', (value) => this.updateCameraPathDensityDisplay(value));
+  }
+
+  setStatsOverlay(statsOverlay) {
+    this.statsOverlay = statsOverlay;
+  }
+
+  moveSlidersToReplayStats() {
+    if (!this.statsOverlay) return;
+    const sliderContainer = this.statsOverlay.getSliderContainer();
+    if (sliderContainer) {
+      sliderContainer.appendChild(this.speedSliderGroup);
+      sliderContainer.appendChild(this.distanceSliderGroup);
+      sliderContainer.appendChild(this.pitchSliderGroup);
+    }
+  }
+
+  returnSlidersToSidePanel() {
+    // Return sliders to their original parent containers
+    this.tourControls.appendChild(this.speedSliderGroup);
+    this.cameraStrategyControls.appendChild(this.distanceSliderGroup);
+    this.cameraStrategyControls.appendChild(this.pitchSliderGroup);
   }
 }
 

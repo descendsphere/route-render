@@ -70,6 +70,7 @@ class App {
       this.ui.setRewindButtonIcon(true); // Always initialize to forward-facing icon
       if (this.state === 'TOUR_PLAYING' || this.state === 'TOUR_PAUSED') {
         this._stopTour();
+        this.ui.returnSlidersToSidePanel(); // Move sliders back to their home
       }
     }
 
@@ -98,6 +99,7 @@ class App {
     this.poiService = new PoiService(this.viewer);
     this.ui = new UIManager(this.viewer); // Initialize UIManager
     this.statsOverlay = new StatsOverlay(); // NEW: Initialize StatsOverlay
+    this.ui.setStatsOverlay(this.statsOverlay); // Inject dependency
 
     // Set up UI callbacks
     this.ui.onFileSelected = (file) => this.handleFileSelect(file);
@@ -1034,6 +1036,7 @@ class App {
       this.statsOverlay.collapseRouteStats();
       this.statsOverlay.showReplayStats();
       this.statsOverlay.expandReplayStats();
+      this.ui.moveSlidersToReplayStats(); // Move sliders to the stats panel
     }
   }
 

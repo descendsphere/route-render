@@ -72,98 +72,12 @@ html, body, #cesiumContainer {
   transform: rotate(-90deg);
 }
 
-/* --- Quick Controls --- */
-#quick-controls-container {
-  position: absolute;
-  left: 0px;
-  top: 70px; /* Position below the collapsed panel */
-  width: 25px; /* Shrink container width */
-  background: rgba(38, 38, 38, 0.85);
-  backdrop-filter: blur(5px);
-  border-radius: 8px;
-  padding: 15px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px; /* Gap between slider groups */
-  z-index: 9;
-  transition: opacity 0.3s ease-in-out;
-  opacity: 0;
-  pointer-events: none; /* Prevent interaction when hidden */
-}
-
-#side-panel.collapsed + #quick-controls-container.active {
-  opacity: 1;
-  pointer-events: auto; /* Allow interaction when visible */
-}
-
-.slider-group.vertical-slider {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px; /* Gap between label and slider */
-  width: 100%;
-}
-
-.vertical-slider label {
-  display: flex;
-  flex-direction: column; /* Stack icon and text vertically in collapsed state */
-  align-items: center;
-  gap: 5px;
-}
-
-.vertical-slider label svg {
-  width: 18px;
-  height: 18px;
-  stroke: white;
-}
-
-.vertical-slider label .label-text {
-  display: none; /* Hide text by default in vertical mode */
-}
-
-.slider-group.vertical-slider span {
-  display: none; /* Hide the value span */
-}
-
-.slider-group.vertical-slider input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 150px; /* This is the length of the vertical slider */
-  height: 5px; /* This is the width of the vertical slider track */
-  transform: rotate(270deg);
-  max-width: none; /* Override max-width for vertical display */
-  margin: 60px 0;
-  background: #555; /* Custom track background */
-  border-radius: 5px;
-}
-
-.slider-group.vertical-slider input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  background: #00BFFF; /* Deep Sky Blue */
-  cursor: pointer;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-.slider-group.vertical-slider input[type="range"]::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: #00BFFF; /* Deep Sky Blue */
-  cursor: pointer;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
 /* --- End Quick Controls --- */
 
 /* --- Unified Bottom Panel --- */
 #bottom-panel-container {
   position: absolute;
-  bottom: 10px;
+  bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
@@ -397,7 +311,7 @@ input[type="file"], input[type="number"], select {
   display: flex;
   flex-direction: column; /* Stack label and slider vertically */
   align-items: flex-start; /* Align items to the start */
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 
 .slider-group label {
@@ -419,17 +333,6 @@ input[type="file"], input[type="number"], select {
 }
 .slider-group label .label-text {
   display: inline; /* Show text by default */
-}
-
-/* When panel is collapsed, .vertical-slider is added */
-.vertical-slider label svg {
-  display: inline-block; /* Show icon */
-  width: 18px;
-  height: 18px;
-  stroke: white;
-}
-.vertical-slider label .label-text {
-  display: none; /* Hide text */
 }
 
 .slider-group input[type="range"] {
@@ -638,14 +541,6 @@ input[type="color"] {
   }
 }
 
-
-.side-panel:not(.collapsed) .vertical-slider label .label-text {
-  display: inline; /* Show text when panel is not collapsed */
-}
-
-.side-panel:not(.collapsed) .vertical-slider label svg {
-  display: none; /* Hide icon when panel is not collapsed */
-}
 .adjust-button {
   background-color: rgba(42, 42, 42, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -688,6 +583,50 @@ input[type="color"] {
 
 .collapsible-header.active::after {
   transform: rotate(-180deg);
+}
+
+
+/* --- Replay Stats Sliders --- */
+.replay-stats-sliders {
+  display: flex;
+  gap: 15px;
+  padding: 10px 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin-top: 5px;
+}
+
+.replay-stats-sliders .slider-group {
+  flex: 1;
+  display: flex;
+  flex-direction: row; /* Changed to row for horizontal layout */
+  align-items: center;
+  gap: 5px;
+}
+
+.replay-stats-sliders .slider-group label {
+  margin-bottom: 0;
+  flex-shrink: 0; /* Prevent label from shrinking */
+  display: flex; /* Make label a flex container to align icon */
+  align-items: center;
+}
+
+.replay-stats-sliders .slider-group label .label-text {
+  display: none; /* Hide text label, icon is enough */
+}
+
+.replay-stats-sliders .slider-group label svg {
+  display: inline-block; /* Show icon */
+  width: 20px;
+  height: 20px;
+}
+
+.replay-stats-sliders .slider-group input[type="range"] {
+  width: 100%; /* Take up available space */
+  flex-grow: 1; /* Allow slider to grow */
+}
+
+.replay-stats-sliders .slider-group span {
+  display: none; /* Hide the numeric value display */
 }
 
 .collapsible-content {

@@ -27,26 +27,43 @@ class StatsOverlay {
     this.container.appendChild(this.replayStatsSection.container);
     this.replayStatsSection.container.style.display = 'none'; // Hidden by default
 
+    // NEW: Add slider container
+    this.replayStatsSliders = document.createElement('div');
+    this.replayStatsSliders.className = 'replay-stats-sliders';
+    this.replayStatsSection.container.appendChild(this.replayStatsSliders);
+
     logger.info('StatsOverlay initialized and added to DOM.');
+  }
+
+  getSliderContainer() {
+    return this.replayStatsSliders;
   }
 
   _createCollapsibleSection(title) {
     const container = document.createElement('div');
     
-    const header = document.createElement('h5');
-    header.style.cssText = 'margin: 0; padding: 3px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px;';
+    const header = document.createElement('div');
+    header.style.cssText = 'margin: 0; padding: 3px 0; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: bold;';
     
     const titleElement = document.createElement('span');
     titleElement.textContent = title;
-    titleElement.style.fontWeight = 'bold';
+    titleElement.style.cssText = 'font-weight: bold; pointer-events: none;';
 
     const summaryElement = document.createElement('div');
-    summaryElement.style.cssText = 'flex-grow: 1; text-align: center; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 10px; font-weight: normal; font-size: 13px;';
+    summaryElement.style.cssText = 'flex-grow: 1; text-align: center; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px 4px; font-weight: normal; font-size: 13px; pointer-events: none;';
+
+    const summaryMetrics = [
+        document.createElement('span'),
+        document.createElement('span'),
+        document.createElement('span'),
+        document.createElement('span')
+    ];
+    summaryMetrics.forEach(span => summaryElement.appendChild(span));
 
     const toggleIcon = document.createElement('span');
     toggleIcon.className = 'toggle-icon';
     toggleIcon.innerHTML = '▾';
-    toggleIcon.style.cssText = 'line-height: 1; font-size: 18px; transform-origin: center; user-select: none;';
+    toggleIcon.style.cssText = 'line-height: 1; font-size: 18px; transform-origin: center; user-select: none; pointer-events: none;';
     
     header.appendChild(titleElement);
     header.appendChild(summaryElement);
@@ -64,7 +81,7 @@ class StatsOverlay {
     container.appendChild(header);
     container.appendChild(content);
 
-    return { container, header, titleElement, summaryElement, content };
+    return { container, header, titleElement, summaryElement, content, summaryMetrics };
   }
 
   // --- Public Methods for Controlling Sections ---
@@ -95,13 +112,11 @@ class StatsOverlay {
   // --- Public Methods for Updating Content ---
 
   updateRouteStats(stats) {
-    let summaryHtml = '';
-    // New Order: Dist, Ele, Kcal, Km-e & Responsive Units
-    if (stats.totalDistance !== undefined) summaryHtml += `<span>↔️ ${stats.totalDistance}<span class="unit-label"> km</span></span>`;
-    if (stats.totalElevationGain !== undefined) summaryHtml += `<span>▲ ${parseFloat(stats.totalElevationGain).toFixed(0)}<span class="unit-label"> m</span></span>`;
-    if (stats.totalCalories !== undefined) summaryHtml += `<span>🔥 ${stats.totalCalories}<span class="unit-label"> KCAL</span></span>`;
-    if (stats.totalKmEffort !== undefined) summaryHtml += `<span>👟 ${stats.totalKmEffort}</span>`;
-    this.routeStatsSection.summaryElement.innerHTML = summaryHtml;
+    const metrics = this.routeStatsSection.summaryMetrics;
+    metrics[0].innerHTML = (stats.totalDistance !== undefined) ? `↔️ ${stats.totalDistance}<span class="unit-label"> km</span>` : '';
+    metrics[1].innerHTML = (stats.totalElevationGain !== undefined) ? `▲ ${parseFloat(stats.totalElevationGain).toFixed(0)}<span class="unit-label"> m</span>` : '';
+    metrics[2].innerHTML = (stats.totalCalories !== undefined) ? `🔥 ${stats.totalCalories}<span class="unit-label"> KCAL</span>` : '';
+    metrics[3].innerHTML = (stats.totalKmEffort !== undefined) ? `👟 ${stats.totalKmEffort}` : '';
     
     let contentHtml = '';
     
@@ -131,15 +146,15 @@ class StatsOverlay {
   }
 
   updateReplayStats(liveStats, hasNativeTimestamps) {
-    let summaryHtml = '';
-    if(liveStats) {
-        // New Order & Icons & Responsive Units: Dist, Ele, Kcal, Time
-        summaryHtml += `<span>↔️ ${liveStats.distance}<span class="unit-label"> km</span></span>`;
-        summaryHtml += `<span>▲ ${liveStats.ascent}<span class="unit-label"> m</span></span>`;
-        if (liveStats.kcal) summaryHtml += `<span>🔥 ${liveStats.kcal}<span class="unit-label"> Kcal</span></span>`;
-        summaryHtml += `<span>⏱️ ${liveStats.elapsedTime}</span>`;
+    const metrics = this.replayStatsSection.summaryMetrics;
+    if (liveStats) {
+        metrics[0].innerHTML = `↔️ ${liveStats.distance}<span class="unit-label"> km</span>`;
+        metrics[1].innerHTML = `▲ ${liveStats.ascent}<span class="unit-label"> m</span>`;
+        metrics[2].innerHTML = (liveStats.kcal) ? `🔥 ${liveStats.kcal}<span class="unit-label"> Kcal</span>` : '';
+        metrics[3].innerHTML = `⏱️ ${liveStats.elapsedTime}`;
+    } else {
+        metrics.forEach(m => m.innerHTML = '');
     }
-    this.replayStatsSection.summaryElement.innerHTML = summaryHtml;
 
     let contentHtml = '<table style="width: 100%; border-spacing: 0 2px; font-size: 12px;">';
     // Add units to header on a single line

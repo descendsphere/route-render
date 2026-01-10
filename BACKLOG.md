@@ -33,15 +33,6 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
     -   **`TourController.js`:** Introduce a `resetCamera()` method to set `this.cameraPitch` to -45, `this.cameraDistance` to 1000, and apply the "Overhead" camera strategy.
     -   **`SpeedController.js`:** Add a `resetSpeed()` method to restore `this.currentRelativeSpeed` to 1 and re-apply the calculated `defaultMultiplier`.
     -   **`app.js`:** Orchestrate the reset by wiring UI events to a `handleResetCamera()` method, which will call `tourController.resetCamera()`, `speedController.resetSpeed()`, and `uiManager` methods to update the UI elements.
-- **[REFACTOR] Horizontal Quick Controls:**
-  - **Problem:** When the side panel is collapsed, the vertical sliders for Speed, Distance, and Pitch in the "quick controls" area are not very responsive on mobile devices and can accidentally trigger page reloads.
-  - **Solution (Option 1):** Rearchitect the quick controls to be horizontal and relocate them to the bottom of the screen. When the side panel is collapsed, instead of appearing vertically on the left, the sliders for Speed, Distance, and Pitch will appear in a new horizontal container positioned above the main playback controls (time scrubber, play/pause, etc.).
-  - **Scope:**
-    -   Create a new horizontal container for the quick controls that is only visible when the side panel is collapsed.
-    -   Modify `UIManager.js` to move the Speed, Distance, and Pitch sliders to this new bottom container instead of the left-side vertical container.
-    -   Remove the logic for applying the `.vertical-slider` class.
-    -   Update CSS to style the new container and ensure the sliders within it are horizontal and visually consistent with the main time scrubber.
-    -   Increase the width of all bottom sliders (the new three plus the existing time scrubber) to approximately 85% of the screen width to allow for more precise user control.
 
 ### File Management
 
@@ -78,6 +69,15 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 ---
 
 ### Completed Items
+
+- **[REFACTOR] Integrate Tour Sliders into Replay Stats Panel:** Relocate the Speed, Zoom, and Pitch sliders to a new horizontal row inside the Replay Stats panel, visible only during tour playback. This improves contextual UI and supersedes the 'Horizontal Quick Controls' item.
+  - **Design Doc:** [`docs/proposals/20260110.1530.feature-integrate-sliders-into-replay-stats.md`](./docs/proposals/20260110.1530.feature-integrate-sliders-into-replay-stats.md)
+
+- **[BUGFIX] Make Replay Stats Header Fully Clickable:** The entire header of the Replay Stats panel is now fully clickable to toggle visibility, which was fixed by adopting a more robust DOM update strategy.
+  - **Design Doc:** [`docs/proposals/20260110.1530.bugfix-replay-stats-header-clickable.md`](./docs/proposals/20260110.1530.bugfix-replay-stats-header-clickable.md)
+
+- **[UI/UX] Adjust Bottom Panel Vertical Position:** Added a margin to the bottom of all lower UI panels to prevent overlap with the Cesium logo.
+  - **Design Doc:** [`docs/proposals/20260110.1530.ui-adjust-bottom-panel-position.md`](./docs/proposals/20260110.1530.ui-adjust-bottom-panel-position.md)
 
 - **[EPIC] Camera Strategy Framework and Cinematic Camera:**
   - **[REFACTOR] Camera Strategy Framework:** Refactored all camera logic into a modular framework with a central `CameraController` and strategy-specific classes. This resolved numerous state management and camera control bugs.
