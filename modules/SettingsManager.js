@@ -43,7 +43,13 @@ class SettingsManager {
             min: 1, // Minimum 1 second smoothing
             max: 60, // Maximum 60 seconds smoothing
         },
-        // Cinematic Camera Settings
+        debugOverlay: {
+            type: 'boolean',
+            defaultValue: false,
+            url: true
+        },
+
+    // --- Camera Settings ---
         cameraPathDetail: {
             type: 'number',
             defaultValue: 100,
@@ -248,7 +254,7 @@ class SettingsManager {
                 }
                 return result;
             case 'boolean':
-                return Boolean(value);
+                return String(value) === 'true';
             default:
                 return result;
         }

@@ -325,18 +325,37 @@ class UIManager {
             this.onAthleteProfileChange();
         }
     });
-    this.restTimeIncrement.addEventListener('click', () => {
-        let value = parseInt(this.restTimeDisplay.textContent, 10);
-        if (value < 60) {
-            value++;
-            this.restTimeDisplay.textContent = value;
-            this.onAthleteProfileChange();
-        }
-    });
-
-    // Smoothing Period Listeners
-    this.smoothingPeriodDecrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(-10));
-    this.smoothingPeriodDecrement.addEventListener('click', () => this._adjustSmoothingPeriod(-1));
+            this.restTimeIncrement.addEventListener('click', () => {
+                let value = parseInt(this.restTimeDisplay.textContent, 10);
+                if (value < 60) {
+                    value++;
+                    this.restTimeDisplay.textContent = value;
+                    this.onAthleteProfileChange();
+                }
+            });
+    
+            // NEW: Add Debug Overlay Toggle
+            const debugContainer = document.createElement('div');
+            debugContainer.className = 'slider-group';
+            const debugLabel = document.createElement('label');
+            debugLabel.htmlFor = 'debug-overlay-toggle';
+            debugLabel.textContent = 'Show Debug Overlay:';
+            const debugToggle = document.createElement('input');
+            debugToggle.type = 'checkbox';
+            debugToggle.id = 'debug-overlay-toggle';
+            debugToggle.checked = SettingsManager.get('debugOverlay');
+            debugToggle.addEventListener('change', () => {
+                SettingsManager.set('debugOverlay', debugToggle.checked);
+            });
+            SettingsManager.subscribe('debugOverlay', (value) => {
+                debugToggle.checked = value;
+            });
+            debugContainer.appendChild(debugLabel);
+            debugContainer.appendChild(debugToggle);
+            this.styleControls.appendChild(debugContainer);
+    
+            // Smoothing Period Listeners
+            this.smoothingPeriodDecrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(-10));    this.smoothingPeriodDecrement.addEventListener('click', () => this._adjustSmoothingPeriod(-1));
     this.smoothingPeriodIncrement.addEventListener('click', () => this._adjustSmoothingPeriod(1));
     this.smoothingPeriodIncrementLarge.addEventListener('click', () => this._adjustSmoothingPeriod(10));
 

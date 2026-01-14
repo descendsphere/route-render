@@ -10,9 +10,10 @@ import RouteStorage from './modules/RouteStorage.js';
 import GpxGenerator from './modules/GpxGenerator.js';
 import EnergyCalculator from './modules/EnergyCalculator.js';
 import PerformancePlanner from './modules/PerformancePlanner.js';
-import StatsOverlay from './modules/StatsOverlay.js'; // NEW
+import StatsOverlay from './modules/StatsOverlay.js';
 import SettingsManager from './modules/SettingsManager.js';
-import CameraController from './modules/CameraController.js'; // NEW
+import CameraController from './modules/CameraController.js';
+import DebugOverlay from './modules/DebugOverlay.js';
 
 class App {
   constructor() {
@@ -26,6 +27,7 @@ class App {
     this.person = null;
     this.ui = null; // New UIManager instance
     this.statsOverlay = null; // NEW
+    this.debugOverlay = null; // NEW
     this.state = 'NO_ROUTE'; // Initial state
     this.poisAreVisible = true; // Initial state for POI visibility
     this.routes = []; // To cache routes from storage
@@ -100,6 +102,39 @@ class App {
     this.ui = new UIManager(this.viewer); // Initialize UIManager
     this.statsOverlay = new StatsOverlay(); // NEW: Initialize StatsOverlay
     this.ui.setStatsOverlay(this.statsOverlay); // Inject dependency
+
+    // NEW: Initialize Debug Overlay
+    this.debugOverlay = new DebugOverlay(this.viewer.container);
+    SettingsManager.subscribe('debugOverlay', (show) => {
+      show ? this.debugOverlay.show() : this.debugOverlay.hide();
+    });
+    // Immediately set initial state
+    if (SettingsManager.get('debugOverlay')) {
+        this.debugOverlay.show();
+    }
+
+    let lastStorageUsage = 0;
+
+    // Set up a slower timer for expensive metrics like storage
+    setInterval(() => {
+        if (SettingsManager.get('debugOverlay')) {
+            // This is a "private" method on the overlay, but we call it here to orchestrate the timing.
+            lastStorageUsage = this.debugOverlay._getLocalStorageUsage();
+            this.debugOverlay.update({ storageUsed: lastStorageUsage });
+        }
+    }, 2000);
+
+    // Set up the main render loop for fast metrics
+    this.viewer.scene.postRender.addEventListener(() => {
+        if (SettingsManager.get('debugOverlay')) {
+            const metrics = { storageUsed: lastStorageUsage };
+            if (performance.memory) {
+                metrics.usedHeap = performance.memory.usedJSHeapSize;
+                metrics.heapLimit = performance.memory.jsHeapSizeLimit;
+            }
+            this.debugOverlay.update(metrics);
+        }
+    });
 
     // Set up UI callbacks
     this.ui.onFileSelected = (file) => this.handleFileSelect(file);

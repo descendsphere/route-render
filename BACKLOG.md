@@ -70,6 +70,9 @@ This file contains a list of proposed features and enhancements for the GPX 3D P
 
 ### Completed Items
 
+- **[FEATURE] Implement Debug Overlay for Performance Monitoring:** Provides real-time, on-screen diagnostic information (JS heap memory, LocalStorage usage) to assist in debugging resource exhaustion issues on mobile. It is a permanent, toggleable feature controllable via UI checkbox and `?debugOverlay=true` URL parameter.
+  - **Design Doc:** [`docs/proposals/20260112.debug-overlay.md`](./docs/proposals/20260112.debug-overlay.md)
+
 - **[REFACTOR] Integrate Tour Sliders into Replay Stats Panel:** Relocate the Speed, Zoom, and Pitch sliders to a new horizontal row inside the Replay Stats panel, visible only during tour playback. This improves contextual UI and supersedes the 'Horizontal Quick Controls' item.
   - **Design Doc:** [`docs/proposals/20260110.1530.feature-integrate-sliders-into-replay-stats.md`](./docs/proposals/20260110.1530.feature-integrate-sliders-into-replay-stats.md)
 
