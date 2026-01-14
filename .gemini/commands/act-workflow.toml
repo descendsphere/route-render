@@ -56,6 +56,19 @@ To ensure our collaboration is professional and effective, you MUST adhere to th
 > 2.  **UI Interaction:** Navigate to the `<Feature-Panel>` and click the `<New-Button>`. The `<Expected-Result-A>` should occur.
 > 3.  **URL Parameter:** Test by loading the page with `?<feature-param>=<value>`.
 
+**Pattern Name:** `P5: The End-to-End Logic Trace`
+**Description:** To verify complex features or diagnose issues, we can perform a logic trace. This involves describing a complete user workflow step-by-step, from UI interaction to backend processing and back. This pattern is invaluable during the **Design Stage** to validate a proposal and during the **Verification Stage** to confirm an implementation's correctness.
+**Example:**
+> Let me trace the logic for the "`<User-Workflow-Name>`" feature:
+>
+> *   A user action in `<Component-A>` (e.g., clicking a button) enables `<Trigger-Button>` in the UI.
+> *   The user clicks `<Trigger-Button>`, which triggers the main action. This should have the same behavior as the action in `<Component-B>`.
+> *   Data from the UI (`<Criteria-Set-1>`) along with the `<Key-Identifier>` is submitted to the `<Frontend-Framework>`, which passes it to the `<BFF-Layer>` and then to our main `<Backend-Service>`.
+> *   The `<Backend-Service>` then calls the `<External-API-Provider>`. Based on the API documentation, the external API expects `<Param-A>`, `<Param-B>`, and `<Param-C>`.
+>     *   **Question:** Is our submitted UI criteria sufficient to construct all required parameters, specifically `<Param-B>`?
+> *   The `<External-API-Provider>` responds with a payload containing `<Response-Field-1>`, `<Response-Field-2>`, and a `<Resource-URL>`.
+>     *   **Question:** The `<Resource-URL>` requires special handling. Are we fetching this resource asynchronously and caching it? We should consider using a `<UI-Pattern-for-Async-Data>` so that the main textual results can be displayed instantly while the resource loads in the background.
+
 #### ❌ Bad Interaction Patterns
 
 **Pattern Name:** `N1: The "Code First, Ask Later" Anti-Pattern`
